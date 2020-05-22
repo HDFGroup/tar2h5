@@ -1,0 +1,593 @@
+#+TITLE: From TAR to HDF5
+#+DATE: <2020-05-10 Sun>
+#+AUTHOR: Gerd Heber
+
+
+#+SETUPFILE: https://raw.githubusercontent.com/fniessen/org-html-themes/master/setup/theme-readtheorg.setup
+
+#+PROPERTY: header-args :eval never-export
+#+PROPERTY: header-args:C :flags -I/home/gerdheber/.local/include :libs -L/home/gerdheber/.local/lib -L/usr/lib/x86_64-linux-gnu -larchive -lhdf5 -lssl -lcrypto  :includes '(<assert.h> <stdlib.h> <string.h> <archive.h> <archive_entry.h> <hdf5.h> <openssl/sha.h>) :defines "BUF_SIZE 65535")
+
+* Why
+
+  - Use case: ML training sets
+  - Wanted: parallel, random access to objects (blobs)
+  - Compression of objects, if applicable
+  - SHA-1 digest for de-duplication, if applicable
+
+* A Simple Archive Checker
+
+  We use [[https://www.libarchive.org/][libarchive]] for reading TAR archives and extracting TAR archive
+  entries.
+
+  We need a buffer =buff= for reading data and count the files we read
+  (=file_count=). We don't expect files greater than 64K and set =flg=, if
+  the data doesn't fit into a single buffer.
+
+  #+name: basic-definitions
+  #+begin_src C
+  int retval;
+  struct archive *a;
+  struct archive_entry *entry;
+  char buff[BUF_SIZE];
+  size_t file_count = 0;
+  unsigned int flg = 0;
+  #+end_src
+
+  Create a new archive for read and open the TAR file.
+
+  #+name: open-archive
+  #+begin_src C
+  a = archive_read_new();
+  archive_read_support_filter_all(a);
+  archive_read_support_format_all(a);
+
+  retval = archive_read_open_filename(a, tarname, 1048576);
+  if (retval != ARCHIVE_OK) {
+    printf("ERROR: Can't open TAR file!\n");
+    exit(1);
+  }
+  #+end_src
+
+  Keep reading the next header until done. For each header, read the data in up
+  to 64K chunks. A return value of 0 from =archive_read_data= indicates that we
+  are done with an entry. Set =flg= after the first read so that we can detect
+  data sizes exceeding 64K. If that's the case, print a warning. Finally, print
+  the number of (non-empty) files we've seen.
+
+  #+name: archive-checker-main-loop
+  #+begin_src C
+  while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+    for (;;) {
+      retval = archive_read_data(a, buff, BUF_SIZE);
+      assert (retval >= 0);
+
+      if (retval == 0) {
+        flg = 0;
+        break;
+      }
+
+      if (flg == 1)
+        printf("WARNING: File > 64K found.\n");
+
+      flg = 1;
+      ++file_count;
+    }
+  }
+
+  printf("%d files can be extracted.\n", file_count);
+  #+end_src
+
+  Close the archive.
+
+  #+name: close-archive
+  #+begin_src C
+  retval = archive_read_free(a);
+  if (retval != ARCHIVE_OK) {
+    printf("ERROR: Can't close the archive properly!\n");
+    exit(1);
+  }
+  #+end_src
+
+  #+begin_src C :noweb yes :tangle archive_checker.c :var tarname="test.tar" :exports none
+  <<basic-definitions>>
+  <<open-archive>>
+  <<archive-checker-main-loop>>
+  <<close-archive>>
+  #+end_src
+
+** A simplified checker for small (<64K) items
+
+   Let's assume that all files in the archive do not exceed a certain size,
+   such as 64K. We can then read the whole show in one go and don't need a more
+   complex control structure.
+
+   #+name: archive-checker-64k-main-loop
+   #+begin_src C
+   while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+     retval = archive_read_data(a, buff, BUF_SIZE);
+     assert (retval >= 0 && retval < BUF_SIZE);
+
+     if (retval > 0)
+       ++file_count;
+    }
+
+   printf("%d files can be extracted.\n", file_count);
+   #+end_src
+
+   #+begin_src C :noweb yes :tangle archive_checker_64k.c :var tarname="test.tar" :exports none
+   <<basic-definitions>>
+   <<open-archive>>
+   <<archive-checker-64k-main-loop>>
+   <<close-archive>>
+   #+end_src
+
+* HDF5 Compactor
+
+  Presumably, all files in the archive are smaller than 64K. Let's create
+  matching HDF5 datasets with compact storage layout! We use the location
+  in the archive as the dataset path name.
+
+  We have the same set of variables as before plus a few HDF5 extras.
+
+  #+name: h5compactor-definitions
+  #+begin_src C :noweb no-export
+  <<basic-definitions>>
+
+  hid_t fapl, file, space, dcpl, lcpl, dset;
+  hsize_t dims;
+  #+end_src
+
+  Open the archive and create an HDF5 file. Initialize HDF5 property lists that
+  we'll use in the main loop.
+
+  #+name: h5compactor-preamble
+  #+begin_src C :noweb no-export
+  <<open-archive>>
+
+  assert((lcpl = H5Pcreate(H5P_LINK_CREATE)) >= 0);
+  assert(H5Pset_create_intermediate_group(lcpl, 1) >= 0);
+
+  assert((dcpl = H5Pcreate(H5P_DATASET_CREATE)) >= 0);
+  assert(H5Pset_layout(dcpl, H5D_COMPACT) >= 0);
+
+  assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
+  assert(H5Pset_libver_bounds(fapl, H5F_LIBVER_V18, H5F_LIBVER_V110) >= 0);
+
+  assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl))
+         >= 0);
+
+  assert(H5Pclose(fapl) >= 0);
+  #+end_src
+
+  Retrieve the data as before and write them to the correspoinding HDF5
+  dataset. The name of a file in the archive can be retrieved via
+  =archive_entry_pathname=.
+
+  #+name: h5compactor-main-loop
+  #+begin_src C
+  while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+    retval = archive_read_data(a, buff, BUF_SIZE);
+    assert (retval >= 0 && retval < BUF_SIZE);
+
+    if (retval > 0) {
+      dims = (hsize_t) retval;
+      assert((space = H5Screate_simple(1, &dims, NULL)) >= 0);
+      if ((dset = H5Dcreate(file, archive_entry_pathname(entry),
+                            H5T_NATIVE_UINT8, space, lcpl, dcpl,
+                            H5P_DEFAULT)) >= 0) {
+        assert(H5Dwrite(dset, H5T_NATIVE_UINT8, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, buff)>= 0);
+        assert(H5Dclose(dset) >= 0);
+
+        ++file_count;
+      }
+      assert(H5Sclose(space) >= 0);
+    }
+  }
+
+  printf("%d files extracted.\n", file_count);
+  #+end_src
+
+  Do the usual housekeeping.
+
+  #+name: h5compactor-postamble
+  #+begin_src C :noweb no-export
+  assert(H5Fclose(file) >= 0);
+  assert(H5Pclose(dcpl) >= 0);
+  assert(H5Pclose(lcpl) >= 0);
+
+  <<close-archive>>
+  #+end_src
+
+  #+header:  :var tarname="test.tar" :var h5name="compact.h5"
+  #+begin_src C :noweb yes :tangle h5compactor.c :exports none
+  <<h5compactor-definitions>>
+  <<h5compactor-preamble>>
+  <<h5compactor-main-loop>>
+  <<h5compactor-postamble>>
+  #+end_src
+
+  The resulting HDF5 profile will look like this:
+
+  #+begin_example
+  HDF5 "compact.h5" {
+  SUPER_BLOCK {
+     SUPERBLOCK_VERSION 2
+     FREELIST_VERSION 0
+     SYMBOLTABLE_VERSION 0
+     OBJECTHEADER_VERSION 0
+     OFFSET_SIZE 8
+     LENGTH_SIZE 8
+     BTREE_RANK 16
+     BTREE_LEAF 4
+     ISTORE_K 32
+     FILE_SPACE_STRATEGY H5F_FSPACE_STRATEGY_FSM_AGGR
+     FREE_SPACE_PERSIST FALSE
+     FREE_SPACE_SECTION_THRESHOLD 1
+     FILE_SPACE_PAGE_SIZE 4096
+     USER_BLOCK {
+        USERBLOCK_SIZE 0
+     }
+  }
+  GROUP "/" {
+     GROUP "train_frames_12fps_128_center_cropped" {
+        GROUP "0074cdXclLU" {
+           DATASET "000001.jpg" {
+              DATATYPE  H5T_STD_U8LE
+              DATASPACE  SIMPLE { ( 3991 ) / ( 3991 ) }
+              STORAGE_LAYOUT {
+                 COMPACT
+                 SIZE 3991
+              }
+              ...
+           }
+           ...
+        }
+        ...
+      }
+    }
+  }
+  #+end_example
+
+** Using SHA-1 Hashes as Path Names
+
+   This variation uses the SHA-1 message digest of the file data as an
+   identifier. The corresponding HDF5 file will contain less metadata because
+   of the flat top-level structure.
+
+   We need two additional buffers for the SHA-1 digest and the corresponding
+   path name.
+
+   #+name: h5compactor-sha1-definitions
+   #+begin_src C :noweb no-export
+   <<h5compactor-definitions>>
+
+   unsigned char md[SHA_DIGEST_LENGTH];
+   unsigned char hash[2*SHA_DIGEST_LENGTH];
+   int i;
+   #+end_src
+
+   The main loop is exactly the same as for the regular compactor. We just need
+   to calculate the SHA-1 message digest of the payload and convert it to a
+   human-readable name.
+
+   #+name: h5compactor-sha1-main-loop
+   #+begin_src C
+   while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+     retval = archive_read_data(a, buff, BUF_SIZE);
+     assert (retval >= 0 && retval < BUF_SIZE);
+
+     if (retval > 0) {
+       SHA1(buff, retval, md);
+
+       for (i=0; i < SHA_DIGEST_LENGTH; ++i) {
+         sprintf((char*)&(hash[i*2]), "%02x%c", md[i],
+                 i < (SHA_DIGEST_LENGTH-1) ? ' ' : '\0');
+       }
+
+       dims = (hsize_t) retval;
+       assert((space = H5Screate_simple(1, &dims, NULL)) >= 0);
+       if ((dset = H5Dcreate(file, hash, H5T_NATIVE_UINT8, space,
+                             H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0) {
+         assert(H5Dwrite(dset, H5T_NATIVE_UINT8, H5S_ALL, H5S_ALL,
+                         H5P_DEFAULT, buff)>= 0);
+         assert(H5Dclose(dset) >= 0);
+         ++file_count;
+       }
+       assert(H5Sclose(space) >= 0);
+     }
+    }
+
+   printf("%d files extracted.\n", file_count);
+   #+end_src
+
+   #+header:  :var tarname="test.tar" :var h5name="compact-sha1.h5"
+   #+begin_src C :noweb yes :tangle h5compactor-sha1.c :exports none
+   <<h5compactor-sha1-definitions>>
+   <<h5compactor-preamble>>
+   <<h5compactor-sha1-main-loop>>
+   <<h5compactor-postamble>>
+   #+end_src
+
+  The resulting HDF5 profile will look like this:
+
+  #+begin_example
+  HDF5 "compact-sha1.h5" {
+  SUPER_BLOCK {
+     SUPERBLOCK_VERSION 2
+     FREELIST_VERSION 0
+     SYMBOLTABLE_VERSION 0
+     OBJECTHEADER_VERSION 0
+     OFFSET_SIZE 8
+     LENGTH_SIZE 8
+     BTREE_RANK 16
+     BTREE_LEAF 4
+     ISTORE_K 32
+     FILE_SPACE_STRATEGY H5F_FSPACE_STRATEGY_FSM_AGGR
+     FREE_SPACE_PERSIST FALSE
+     FREE_SPACE_SECTION_THRESHOLD 1
+     FILE_SPACE_PAGE_SIZE 4096
+     USER_BLOCK {
+        USERBLOCK_SIZE 0
+     }
+  }
+  GROUP "/" {
+     DATASET "010307d26fb757f466e7acad477eb2d4d21a42b5" {
+        DATATYPE  H5T_STD_U8LE
+        DATASPACE  SIMPLE { ( 3148 ) / ( 3148 ) }
+        STORAGE_LAYOUT {
+           COMPACT
+           SIZE 3148
+        }
+        ...
+     }
+     ...
+    }
+  }
+  #+end_example
+
+* HDF5 Shredder
+
+  The compactor created separate HDF5 datasets for each file in the TAR
+  archive. The shredder stores all data in a single dataset =image=. The bytes
+  from each file begin (and end) at a certain position in that dataset and we
+  track that information in a separate dataset =image_offset=. We do the same for
+  the path names in the TAR archive in the =name= and =name_offset= datasets. The
+  element type of the payload dataset will be bytes (=H5T_NATIVE_UINT8=) and the
+  offsets will be stored as (potentially large) integers (=H5T_NATIVE_HSIZE=). In
+  other words, the HDF5 shredder represents the file contents of the TAR
+  archive in merely four HDF5 datasets. The main advantage of this
+  representation is that it provides random access to the file data (and
+  names).
+
+  We have to keep track of the extents of four different datasets and need a
+  few extra variables for the bookkeeping.
+
+  #+name: h5shredder-definitions
+  #+begin_src C :noweb no-export
+  <<basic-definitions>>
+
+  hid_t fapl, file, fspace, mspace, dcpl;
+  hid_t image, image_offset, name, name_offset;
+  hsize_t dims, maxdims = H5S_UNLIMITED;
+  hsize_t extent = 0, offset_extent = 0, offset = 0;
+  hsize_t nextent = 0, noffset_extent = 0, noffset = 0;
+  hsize_t start, one = 1, block;
+  #+end_src
+
+  Since we generally don't know how many files there are in an archive, all
+  datasets will be extendible. In the case of the =name= dataset, we expect a
+  certain repetitiveness and it makes sense to apply (Gzip) compression.
+
+  We use 1 million element chunks.
+
+  #+name: h5shredder-preamble
+  #+begin_src C :noweb no-export
+  <<open-archive>>
+
+  assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
+  assert(H5Pset_libver_bounds(fapl, H5F_LIBVER_V18, H5F_LIBVER_V110) >= 0);
+  assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl))
+         >= 0);
+  assert(H5Pclose(fapl) >= 0);
+
+  dims = (hsize_t) 0;
+  assert((fspace = H5Screate_simple(1, &dims, &maxdims)) >= 0);
+
+  assert((dcpl = H5Pcreate(H5P_DATASET_CREATE)) >= 0);
+  dims = 1<<20;
+  assert(H5Pset_chunk(dcpl, 1, &dims) >= 0);
+
+  assert((image = H5Dcreate(file, "image", H5T_NATIVE_UINT8, fspace,
+                            H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0);
+  assert((image_offset = H5Dcreate(file, "image_offset", H5T_NATIVE_HSIZE,
+                                   fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT))
+         >= 0);
+  assert((name_offset = H5Dcreate(file, "name_offset", H5T_NATIVE_HSIZE,
+                                  fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT))
+         >= 0);
+  assert(H5Pset_deflate(dcpl, 6) >= 0);
+  assert((name = H5Dcreate(file, "name", H5T_NATIVE_UINT8, fspace, H5P_DEFAULT,
+                           dcpl, H5P_DEFAULT)) >= 0);
+  assert(H5Pclose(dcpl) >= 0);
+  assert(H5Sclose(fspace) >= 0);
+  #+end_src
+
+  The main loop is unchanged. Fetch a new file from the archive and update the
+  four datasets. The code for the =image= and =image_offset,= and the =name= and
+  =name_offset= datasets is identical, and only the block
+  =<<h5shredder-write-image>>= is shown below.
+
+  #+name: h5shredder-main-loop
+  #+begin_src C :noweb no-export
+  while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+    retval = archive_read_data(a, buff, BUF_SIZE);
+    assert (retval >= 0 && retval < BUF_SIZE);
+
+    if (retval > 0) {
+
+      <<h5shredder-write-image>>
+      <<h5shredder-write-name>>
+
+      ++file_count;
+    }
+   }
+
+  printf("%d files extracted.\n", file_count);
+  #+end_src
+
+  This is the block =<<h5shredder-write-image>>= for updating the =image= and
+  =image_offset= datasets. The update/extension is done in standard HDF5 fashion:
+  Construct an in-memory selection, extend the dataset, retrieve a handle of
+  the in-file dataspace, (hyperslab-)select the destination in the file, and
+  write.
+
+  Remember that =retval= contains the size of the file in the archive.
+
+  #+begin_src C :noweb-ref h5shredder-write-image
+  offset = start = extent;
+  block = (hsize_t) retval;
+  extent += block;
+  assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+  assert(H5Sselect_all(mspace) >= 0);
+  assert(H5Dset_extent(image, &extent) >= 0);
+  assert((fspace = H5Dget_space(image)) >= 0);
+  assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                             &block) >= 0);
+  assert(H5Dwrite(image, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
+                  buff) >= 0);
+  assert(H5Sclose(fspace) >= 0);
+  assert(H5Sclose(mspace) >= 0);
+
+  start = offset_extent;
+  block = 1;
+  offset_extent += block;
+  assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+  assert(H5Sselect_all(mspace) >= 0);
+  assert(H5Dset_extent(image_offset, &offset_extent) >= 0);
+  assert((fspace = H5Dget_space(image_offset)) >= 0);
+  assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                             &block) >= 0);
+  assert(H5Dwrite(image_offset, H5T_NATIVE_HSIZE, mspace, fspace,
+                  H5P_DEFAULT, &offset) >= 0);
+  assert(H5Sclose(fspace) >= 0);
+  assert(H5Sclose(mspace) >= 0);
+  #+end_src
+
+  #+begin_src C :noweb-ref h5shredder-write-name :exports none
+  noffset = start = nextent;
+  block = (hsize_t) strlen(archive_entry_pathname(entry)) + 1;
+  nextent += block;
+  assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+  assert(H5Sselect_all(mspace) >= 0);
+  assert(H5Dset_extent(name, &nextent) >= 0);
+  assert((fspace = H5Dget_space(name)) >= 0);
+  assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                             &block) >= 0);
+  assert(H5Dwrite(name, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
+                  archive_entry_pathname(entry)) >= 0);
+  assert(H5Sclose(fspace) >= 0);
+  assert(H5Sclose(mspace) >= 0);
+
+  start = noffset_extent;
+  block = 1;
+  noffset_extent += block;
+  assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+  assert(H5Sselect_all(mspace) >= 0);
+  assert(H5Dset_extent(name_offset, &noffset_extent) >= 0);
+  assert((fspace = H5Dget_space(name_offset)) >= 0);
+  assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                             &block) >= 0);
+  assert(H5Dwrite(name_offset, H5T_NATIVE_HSIZE, mspace, fspace,
+                  H5P_DEFAULT, &noffset) >= 0);
+  assert(H5Sclose(fspace) >= 0);
+  assert(H5Sclose(mspace) >= 0);
+  #+end_src
+
+  Make sure we close the datasets and the file.
+
+  #+name: h5shredder-postamble
+  #+begin_src C :noweb no-export
+  assert(H5Dclose(name_offset) >= 0);
+  assert(H5Dclose(name) >= 0);
+  assert(H5Dclose(image_offset) >= 0);
+  assert(H5Dclose(image) >= 0);
+  assert(H5Fclose(file) >= 0);
+
+  <<close-archive>>
+  #+end_src
+
+  #+header: :var tarname="test.tar" :var h5name="shredder.h5"
+  #+begin_src C :noweb no-export :tangle h5shredder.c :exports none
+  <<h5shredder-definitions>>
+  <<h5shredder-preamble>>
+  <<h5shredder-main-loop>>
+  <<h5shredder-postamble>>
+  #+end_src
+
+  The resulting HDF5 profile will look like this:
+
+  #+begin_example
+  HDF5 "shredder.h5" {
+  SUPER_BLOCK {
+     SUPERBLOCK_VERSION 2
+     FREELIST_VERSION 0
+     SYMBOLTABLE_VERSION 0
+     OBJECTHEADER_VERSION 0
+     OFFSET_SIZE 8
+     LENGTH_SIZE 8
+     BTREE_RANK 16
+     BTREE_LEAF 4
+     ISTORE_K 32
+     FILE_SPACE_STRATEGY H5F_FSPACE_STRATEGY_FSM_AGGR
+     FREE_SPACE_PERSIST FALSE
+     FREE_SPACE_SECTION_THRESHOLD 1
+     FILE_SPACE_PAGE_SIZE 4096
+     USER_BLOCK {
+        USERBLOCK_SIZE 0
+     }
+  }
+  GROUP "/" {
+     DATASET "image" {
+        DATATYPE  H5T_STD_U8LE
+        DATASPACE  SIMPLE { ( 976083 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 1048576
+        }
+        ...
+     }
+     DATASET "image_offset" {
+        DATATYPE  H5T_STD_U64LE
+        DATASPACE  SIMPLE { ( 242 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 8388608
+        }
+        ...
+     }
+     DATASET "name" {
+        DATATYPE  H5T_STD_U8LE
+        DATASPACE  SIMPLE { ( 14762 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 1894 (7.794:1 COMPRESSION)
+        }
+        FILTERS {
+           COMPRESSION DEFLATE { LEVEL 6 }
+        }
+        ...
+     }
+     DATASET "name_offset" {
+        DATATYPE  H5T_STD_U64LE
+        DATASPACE  SIMPLE { ( 242 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 8388608
+        }
+        ...
+     }
+  }
+}
+  #+end_example
