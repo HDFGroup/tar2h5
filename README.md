@@ -5,4 +5,4 @@ Convert Tape ARchives to HDF5 files
 
 ## TODO
 
-[ ] Create a `tar2h5` man page
+- [ ] Create a `tar2h5` man page
