@@ -1,0 +1,34 @@
+#+TITLE: TAR2H5
+#+DATE: <2020-05-22 Fri>
+
+#+OPTIONS: toc:nil num:nil
+
+* Name
+  =tar2h5= - convert a tape archive to an HDF5 file
+
+* Synopsis
+  #+begin_example
+  tar2h5 [OPTION]... <TAR NAME> [HDF5 NAME]
+  #+end_example
+
+* Description
+  Add the contents o =TAR NAME= to an HDF5 file.
+
+  If =HDF5 NAME= is omitted, the name of the HDF5 file is constructed by
+  appending the extension =.h5= to =TAR NAME=.
+
+  - =-?, --help= :: print help message
+  - =-a, --add= :: add to an existing HDF5 file
+  - =-c, --compact= :: use HDF5 compact storage layout for small objects (< 64KB)
+  - =--compress=LEVEL= :: use Gzip compression level =LEVEL= (0 to 9) for objects
+  - =-e= :: print the HDF5 error stack
+  - =-f, --format= :: the minimum HDF5 library compatibility version
+  - =--hash=HASH= :: store a digest according to =HASH= for each object
+  - =-r, --root= :: the path to the top-level HDF5 group
+  - =-v, --version= :: output version information and exit
+
+** Exit status:
+
+   - =0= :: if OK,
+   - =1= :: if minor problems (e.g., hash collision),
+   - =2= :: if serious trouble (e.g., HDF5 file exists and =-a= not specified.)
