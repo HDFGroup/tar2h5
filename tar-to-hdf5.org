@@ -6,7 +6,7 @@
 #+SETUPFILE: https://raw.githubusercontent.com/fniessen/org-html-themes/master/setup/theme-readtheorg.setup
 
 #+PROPERTY: header-args :eval never-export
-#+PROPERTY: header-args:C :flags -I/home/gerdheber/.local/include :libs -L/home/gerdheber/.local/lib -L/usr/lib/x86_64-linux-gnu -larchive -lhdf5 -lssl -lcrypto  :includes '(<assert.h> <stdlib.h> <string.h> <archive.h> <archive_entry.h> <hdf5.h> <openssl/sha.h>) :defines "BUF_SIZE 65535")
+#+PROPERTY: header-args:C :flags -I/home/gerdheber/.local/include :libs -L/home/gerdheber/.local/lib -L/usr/lib/x86_64-linux-gnu -larchive -lhdf5 -lssl -lcrypto)
 
 * Why
 
@@ -14,6 +14,38 @@
   - Wanted: parallel, random access to objects (blobs)
   - Compression of objects, if applicable
   - SHA-1 digest for de-duplication, if applicable
+
+* Housekeeping
+
+  #+name: includes
+  #+begin_src C :noweb yes
+  #include <assert.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <archive.h>
+  #include <archive_entry.h>
+  #include <hdf5.h>
+  #+end_src
+
+  #+name: defines
+  #+begin_src C :noweb yes
+  #define BUF_SIZE 65535
+  #define PATH_MAX 4096
+  #+end_src
+
+  #+name: preproc
+  #+begin_src C :noweb yes :exports none
+  <<includes>>
+  <<defines>>
+  #+end_src
+
+  #+name: arg-check
+  #+begin_src C
+  if (argc == 1) {
+    printf("ERROR: No TAR file specified! Usage: cmd <TAR>\n");
+    exit(1);
+  }
+  #+end_src
 
 * A Simple Archive Checker
 
@@ -27,6 +59,7 @@
   #+name: basic-definitions
   #+begin_src C
   int retval;
+  char tarname[PATH_MAX];
   struct archive *a;
   struct archive_entry *entry;
   char buff[BUF_SIZE];
@@ -42,6 +75,8 @@
   archive_read_support_filter_all(a);
   archive_read_support_format_all(a);
 
+  strncpy(tarname, argv[1], PATH_MAX);
+  printf("|    %s\n", tarname);
   retval = archive_read_open_filename(a, tarname, 1048576);
   if (retval != ARCHIVE_OK) {
     printf("ERROR: Can't open TAR file!\n");
@@ -89,11 +124,17 @@
   }
   #+end_src
 
-  #+begin_src C :noweb yes :tangle archive_checker.c :var tarname="test.tar" :exports none
-  <<basic-definitions>>
-  <<open-archive>>
-  <<archive-checker-main-loop>>
-  <<close-archive>>
+  #+begin_src C :noweb yes :tangle archive_checker.c
+  <<preproc>>
+
+  int main(int argc, char** argv) {
+    <<basic-definitions>>
+    <<arg-check>>
+    <<open-archive>>
+    <<archive-checker-main-loop>>
+    <<close-archive>>
+    exit(0);
+  }
   #+end_src
 
 ** A simplified checker for small (<64K) items
@@ -115,11 +156,17 @@
    printf("%d files can be extracted.\n", file_count);
    #+end_src
 
-   #+begin_src C :noweb yes :tangle archive_checker_64k.c :var tarname="test.tar" :exports none
-   <<basic-definitions>>
-   <<open-archive>>
-   <<archive-checker-64k-main-loop>>
-   <<close-archive>>
+   #+begin_src C :noweb yes :tangle archive_checker_64k.c :exports none
+   <<preproc>>
+
+   int main(int argc, char** argv) {
+     <<basic-definitions>>
+     <<arg-check>>
+     <<open-archive>>
+     <<archive-checker-64k-main-loop>>
+     <<close-archive>>
+     exit(0);
+   }
    #+end_src
 
 * HDF5 Compactor
@@ -134,6 +181,7 @@
   #+begin_src C :noweb no-export
   <<basic-definitions>>
 
+  char h5name[PATH_MAX];
   hid_t fapl, file, space, dcpl, lcpl, dset;
   hsize_t dims;
   #+end_src
@@ -154,6 +202,8 @@
   assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
   assert(H5Pset_libver_bounds(fapl, H5F_LIBVER_V18, H5F_LIBVER_V110) >= 0);
 
+  snprintf(h5name, PATH_MAX, "%s.compactor.h5", tarname);
+  printf("|    %s\n", h5name);
   assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl))
          >= 0);
 
@@ -200,12 +250,17 @@
   <<close-archive>>
   #+end_src
 
-  #+header:  :var tarname="test.tar" :var h5name="compact.h5"
   #+begin_src C :noweb yes :tangle h5compactor.c :exports none
-  <<h5compactor-definitions>>
-  <<h5compactor-preamble>>
-  <<h5compactor-main-loop>>
-  <<h5compactor-postamble>>
+  <<preproc>>
+
+  int main(int argc, char** argv) {
+    <<h5compactor-definitions>>
+    <<arg-check>>
+    <<h5compactor-preamble>>
+    <<h5compactor-main-loop>>
+    <<h5compactor-postamble>>
+    exit(0);
+  }
   #+end_src
 
   The resulting HDF5 profile will look like this:
@@ -252,6 +307,14 @@
 
 ** Using SHA-1 Hashes as Path Names
 
+   This is a thought experiment only. It's problematic for at least two
+   reasons:
+
+   1. The SHA-1 calculation is rather slow. It needs to be replaced with
+      something like MurmurHash3 or perfect hashing.
+   2. There is a good chance that there will be collisions. What is the right
+      default behavior, and what kind of options would users like?
+
    This variation uses the SHA-1 message digest of the file data as an
    identifier. The corresponding HDF5 file will contain less metadata because
    of the flat top-level structure.
@@ -271,6 +334,9 @@
    The main loop is exactly the same as for the regular compactor. We just need
    to calculate the SHA-1 message digest of the payload and convert it to a
    human-readable name.
+
+   If there is a collision (same SHA-1), the HDF5 library will throw an error
+   and we'll just ignore it and press on.
 
    #+name: h5compactor-sha1-main-loop
    #+begin_src C
@@ -302,13 +368,21 @@
    printf("%d files extracted.\n", file_count);
    #+end_src
 
-   #+header:  :var tarname="test.tar" :var h5name="compact-sha1.h5"
    #+begin_src C :noweb yes :tangle h5compactor-sha1.c :exports none
-   <<h5compactor-sha1-definitions>>
-   <<h5compactor-preamble>>
-   <<h5compactor-sha1-main-loop>>
-   <<h5compactor-postamble>>
+   <<preproc>>
+   #include <openssl/sha.h>
+
+   int main(int argc, char** argv) {
+     <<h5compactor-sha1-definitions>>
+     <<arg-check>>
+     <<h5compactor-preamble>>
+     <<h5compactor-sha1-main-loop>>
+     <<h5compactor-postamble>>
+     exit(0);
+   }
    #+end_src
+
+   #+RESULTS:
 
   The resulting HDF5 profile will look like this:
 
@@ -368,6 +442,7 @@
   #+begin_src C :noweb no-export
   <<basic-definitions>>
 
+  char h5name[PATH_MAX];
   hid_t fapl, file, fspace, mspace, dcpl;
   hid_t image, image_offset, name, name_offset;
   hsize_t dims, maxdims = H5S_UNLIMITED;
@@ -388,6 +463,8 @@
 
   assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
   assert(H5Pset_libver_bounds(fapl, H5F_LIBVER_V18, H5F_LIBVER_V110) >= 0);
+  snprintf(h5name, PATH_MAX, "%s.shredder.h5", tarname);
+  printf("|    %s\n", h5name);
   assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl))
          >= 0);
   assert(H5Pclose(fapl) >= 0);
@@ -518,13 +595,20 @@
   <<close-archive>>
   #+end_src
 
-  #+header: :var tarname="test.tar" :var h5name="shredder.h5"
   #+begin_src C :noweb no-export :tangle h5shredder.c :exports none
-  <<h5shredder-definitions>>
-  <<h5shredder-preamble>>
-  <<h5shredder-main-loop>>
-  <<h5shredder-postamble>>
+  <<preproc>>
+
+  int main(int argc, char** argv) {
+    <<h5shredder-definitions>>
+    <<arg-check>>
+    <<h5shredder-preamble>>
+    <<h5shredder-main-loop>>
+    <<h5shredder-postamble>>
+    exit(0);
+  }
   #+end_src
+
+  #+RESULTS:
 
   The resulting HDF5 profile will look like this:
 
