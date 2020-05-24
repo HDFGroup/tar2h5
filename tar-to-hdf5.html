@@ -1,0 +1,998 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-05-24 Sun 12:19 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>From TAR to HDF5</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Gerd Heber" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
+
+         <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,400italic,700italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+         <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400,700' rel='stylesheet' type='text/css'>
+         <style type='text/css'>
+            body {
+               font-family: 'Source Sans Pro', sans-serif;
+            }
+            pre, code {
+               font-family: 'Source Code Pro', monospace;
+            }
+         </style>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2020 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">From TAR to HDF5</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orgf47f849">1. Why</a></li>
+<li><a href="#org86ee862">2. Housekeeping</a></li>
+<li><a href="#org2015e57">3. A Simple Archive Checker</a>
+<ul>
+<li><a href="#orgc063bc6">3.1. A simplified checker for small (&lt;64K) items</a></li>
+</ul>
+</li>
+<li><a href="#orgd7b5476">4. HDF5 Compactor</a>
+<ul>
+<li><a href="#org327f24e">4.1. Using SHA-1 Hashes as Path Names</a></li>
+</ul>
+</li>
+<li><a href="#org02529d2">5. HDF5 Shredder</a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgf47f849" class="outline-2">
+<h2 id="orgf47f849"><span class="section-number-2">1</span> Why</h2>
+<div class="outline-text-2" id="text-1">
+<ul class="org-ul">
+<li>Use case: ML training sets</li>
+<li>Wanted: parallel, random access to objects (blobs)</li>
+<li>Compression of objects, if applicable</li>
+<li>SHA-1 digest for de-duplication, if applicable</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org86ee862" class="outline-2">
+<h2 id="org86ee862"><span class="section-number-2">2</span> Housekeeping</h2>
+<div class="outline-text-2" id="text-2">
+<div class="org-src-container">
+<pre class="src src-C" id="org085c38d"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">assert.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">stdlib.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">string.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive_entry.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">hdf5.h</span><span style="color: #707183;">&gt;</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org3e80b28"><span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">BUF_SIZE</span> 65535
+<span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">PATH_MAX</span> 4096
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org37e9b34">  <span style="color: #0000FF;">if</span> <span style="color: #707183;">(</span>argc == 1<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"ERROR: No TAR file specified! Usage: cmd &lt;TAR&gt;\n"</span><span style="color: #7388D6;">)</span>;
+    exit<span style="color: #7388D6;">(</span>1<span style="color: #7388D6;">)</span>;
+  <span style="color: #707183;">}</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2015e57" class="outline-2">
+<h2 id="org2015e57"><span class="section-number-2">3</span> A Simple Archive Checker</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+We use <a href="https://www.libarchive.org/">libarchive</a> for reading TAR archives and extracting TAR archive
+entries.
+</p>
+
+<p>
+We need a buffer <code>buff</code> for reading data and count the files we read
+(<code>file_count</code>). We don't expect files greater than 64K and set <code>flg</code>, if
+the data doesn't fit into a single buffer.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orgd79f8db">  <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">retval</span>;
+  <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">tarname</span><span style="color: #707183;">[</span>PATH_MAX<span style="color: #707183;">]</span>;
+  <span style="color: #0000FF;">struct</span> <span style="color: #6434A3;">archive</span> *<span style="color: #BA36A5;">a</span>;
+  <span style="color: #0000FF;">struct</span> <span style="color: #6434A3;">archive_entry</span> *<span style="color: #BA36A5;">entry</span>;
+  <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">buff</span><span style="color: #707183;">[</span>BUF_SIZE<span style="color: #707183;">]</span>;
+  <span style="color: #6434A3;">size_t</span> <span style="color: #BA36A5;">file_count</span> = 0;
+  <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">flg</span> = 0;
+</pre>
+</div>
+
+<p>
+Create a new archive for read and open the TAR file.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org59bb984">  a = archive_read_new<span style="color: #707183;">()</span>;
+  <span style="color: #006699;">archive_read_support_filter_all</span><span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">archive_read_support_format_all</span><span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
+
+  <span style="color: #006699;">strncpy</span><span style="color: #707183;">(</span>tarname, <span style="color: #6434A3;">argv</span><span style="color: #7388D6;">[</span>1<span style="color: #7388D6;">]</span>, PATH_MAX<span style="color: #707183;">)</span>;
+  printf<span style="color: #707183;">(</span><span style="color: #008000;">"|    %s\n"</span>, tarname<span style="color: #707183;">)</span>;
+  retval = archive_read_open_filename<span style="color: #707183;">(</span>a, tarname, 1048576<span style="color: #707183;">)</span>;
+  <span style="color: #0000FF;">if</span> <span style="color: #707183;">(</span>retval != ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"ERROR: Can't open TAR file!\n"</span><span style="color: #7388D6;">)</span>;
+    exit<span style="color: #7388D6;">(</span>1<span style="color: #7388D6;">)</span>;
+  <span style="color: #707183;">}</span>
+</pre>
+</div>
+
+<p>
+Keep reading the next header until done. For each header, read the data in up
+to 64K chunks. A return value of 0 from <code>archive_read_data</code> indicates that we
+are done with an entry. Set <code>flg</code> after the first read so that we can detect
+data sizes exceeding 64K. If that's the case, print a warning. Finally, print
+the number of (non-empty) files we've seen.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orgaab6df5">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    <span style="color: #0000FF;">for</span> <span style="color: #7388D6;">(</span>;;<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+      retval = archive_read_data<span style="color: #909183;">(</span>a, buff, BUF_SIZE<span style="color: #909183;">)</span>;
+      assert <span style="color: #909183;">(</span>retval &gt;= 0<span style="color: #909183;">)</span>;
+
+      <span style="color: #0000FF;">if</span> <span style="color: #909183;">(</span>retval == 0<span style="color: #909183;">)</span> <span style="color: #909183;">{</span>
+        flg = 0;
+        <span style="color: #0000FF;">break</span>;
+      <span style="color: #909183;">}</span>
+
+      <span style="color: #0000FF;">if</span> <span style="color: #909183;">(</span>flg == 1<span style="color: #909183;">)</span>
+        printf<span style="color: #909183;">(</span><span style="color: #008000;">"WARNING: File &gt; 64K found.\n"</span><span style="color: #909183;">)</span>;
+
+      flg = 1;
+      ++file_count;
+    <span style="color: #7388D6;">}</span>
+  <span style="color: #707183;">}</span>
+
+  printf<span style="color: #707183;">(</span><span style="color: #008000;">"%d files can be extracted.\n"</span>, file_count<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+Close the archive.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org5ca204f">  retval = archive_read_free<span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
+  <span style="color: #0000FF;">if</span> <span style="color: #707183;">(</span>retval != ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"ERROR: Can't close the archive properly!\n"</span><span style="color: #7388D6;">)</span>;
+    exit<span style="color: #7388D6;">(</span>1<span style="color: #7388D6;">)</span>;
+  <span style="color: #707183;">}</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-C"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">assert.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">stdlib.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">string.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive_entry.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">hdf5.h</span><span style="color: #707183;">&gt;</span>
+<span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">BUF_SIZE</span> 65535
+<span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">PATH_MAX</span> 4096
+
+  <span style="color: #6434A3;">int</span> <span style="color: #006699;">main</span><span style="color: #707183;">(</span><span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">argc</span>, <span style="color: #6434A3;">char</span>** <span style="color: #BA36A5;">argv</span><span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">retval</span>;
+    <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">tarname</span><span style="color: #7388D6;">[</span>PATH_MAX<span style="color: #7388D6;">]</span>;
+    <span style="color: #0000FF;">struct</span> <span style="color: #6434A3;">archive</span> *<span style="color: #BA36A5;">a</span>;
+    <span style="color: #0000FF;">struct</span> <span style="color: #6434A3;">archive_entry</span> *<span style="color: #BA36A5;">entry</span>;
+    <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">buff</span><span style="color: #7388D6;">[</span>BUF_SIZE<span style="color: #7388D6;">]</span>;
+    <span style="color: #6434A3;">size_t</span> <span style="color: #BA36A5;">file_count</span> = 0;
+    <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">flg</span> = 0;
+    <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>argc == 1<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+      printf<span style="color: #909183;">(</span><span style="color: #008000;">"ERROR: No TAR file specified! Usage: cmd &lt;TAR&gt;\n"</span><span style="color: #909183;">)</span>;
+      exit<span style="color: #909183;">(</span>1<span style="color: #909183;">)</span>;
+    <span style="color: #7388D6;">}</span>
+    a = archive_read_new<span style="color: #7388D6;">()</span>;
+    archive_read_support_filter_all<span style="color: #7388D6;">(</span>a<span style="color: #7388D6;">)</span>;
+    archive_read_support_format_all<span style="color: #7388D6;">(</span>a<span style="color: #7388D6;">)</span>;
+
+    strncpy<span style="color: #7388D6;">(</span>tarname, argv<span style="color: #909183;">[</span>1<span style="color: #909183;">]</span>, PATH_MAX<span style="color: #7388D6;">)</span>;
+    printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"|    %s\n"</span>, tarname<span style="color: #7388D6;">)</span>;
+    retval = archive_read_open_filename<span style="color: #7388D6;">(</span>a, tarname, 1048576<span style="color: #7388D6;">)</span>;
+    <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>retval != ARCHIVE_OK<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+      printf<span style="color: #909183;">(</span><span style="color: #008000;">"ERROR: Can't open TAR file!\n"</span><span style="color: #909183;">)</span>;
+      exit<span style="color: #909183;">(</span>1<span style="color: #909183;">)</span>;
+    <span style="color: #7388D6;">}</span>
+    <span style="color: #0000FF;">while</span> <span style="color: #7388D6;">(</span>archive_read_next_header<span style="color: #909183;">(</span>a, &amp;entry<span style="color: #909183;">)</span> == ARCHIVE_OK<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+      <span style="color: #0000FF;">for</span> <span style="color: #909183;">(</span>;;<span style="color: #909183;">)</span> <span style="color: #909183;">{</span>
+        retval = archive_read_data<span style="color: #709870;">(</span>a, buff, BUF_SIZE<span style="color: #709870;">)</span>;
+        assert <span style="color: #709870;">(</span>retval &gt;= 0<span style="color: #709870;">)</span>;
+
+        <span style="color: #0000FF;">if</span> <span style="color: #709870;">(</span>retval == 0<span style="color: #709870;">)</span> <span style="color: #709870;">{</span>
+          flg = 0;
+          <span style="color: #0000FF;">break</span>;
+        <span style="color: #709870;">}</span>
+
+        <span style="color: #0000FF;">if</span> <span style="color: #709870;">(</span>flg == 1<span style="color: #709870;">)</span>
+          printf<span style="color: #709870;">(</span><span style="color: #008000;">"WARNING: File &gt; 64K found.\n"</span><span style="color: #709870;">)</span>;
+
+        flg = 1;
+        ++file_count;
+      <span style="color: #909183;">}</span>
+    <span style="color: #7388D6;">}</span>
+
+    printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"%d files can be extracted.\n"</span>, file_count<span style="color: #7388D6;">)</span>;
+    retval = archive_read_free<span style="color: #7388D6;">(</span>a<span style="color: #7388D6;">)</span>;
+    <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>retval != ARCHIVE_OK<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+      printf<span style="color: #909183;">(</span><span style="color: #008000;">"ERROR: Can't close the archive properly!\n"</span><span style="color: #909183;">)</span>;
+      exit<span style="color: #909183;">(</span>1<span style="color: #909183;">)</span>;
+    <span style="color: #7388D6;">}</span>
+    exit<span style="color: #7388D6;">(</span>0<span style="color: #7388D6;">)</span>;
+  <span style="color: #707183;">}</span>
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgc063bc6" class="outline-3">
+<h3 id="orgc063bc6"><span class="section-number-3">3.1</span> A simplified checker for small (&lt;64K) items</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+Let's assume that all files in the archive do not exceed a certain size,
+such as 64K. We can then read the whole show in one go and don't need a more
+complex control structure.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orgabffe3a">   <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+     retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
+     assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
+
+     <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>retval &gt; 0<span style="color: #7388D6;">)</span>
+       ++file_count;
+    <span style="color: #707183;">}</span>
+
+   printf<span style="color: #707183;">(</span><span style="color: #008000;">"%d files can be extracted.\n"</span>, file_count<span style="color: #707183;">)</span>;
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd7b5476" class="outline-2">
+<h2 id="orgd7b5476"><span class="section-number-2">4</span> HDF5 Compactor</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+Presumably, all files in the archive are smaller than 64K. Let's create
+matching HDF5 datasets with compact storage layout! We use the location
+in the archive as the dataset path name.
+</p>
+
+<p>
+We have the same set of variables as before plus a few HDF5 extras.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orgc046b22">  &lt;&lt;basic-definitions&gt;&gt;
+
+  <span style="color: #6434A3;">char</span> h5name<span style="color: #707183;">[</span>PATH_MAX<span style="color: #707183;">]</span>;
+  <span style="color: #6434A3;">hid_t</span> <span style="color: #BA36A5;">fapl</span>, <span style="color: #BA36A5;">file</span>, <span style="color: #BA36A5;">space</span>, <span style="color: #BA36A5;">dcpl</span>, <span style="color: #BA36A5;">lcpl</span>, <span style="color: #BA36A5;">dset</span>;
+  <span style="color: #6434A3;">hsize_t</span> <span style="color: #BA36A5;">dims</span>;
+</pre>
+</div>
+
+<p>
+Open the archive and create an HDF5 file. Initialize HDF5 property lists that
+we'll use in the main loop.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orge5da172">  &lt;&lt;open-archive&gt;&gt;
+
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>lcpl = H5Pcreate<span style="color: #909183;">(</span>H5P_LINK_CREATE<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_create_intermediate_group<span style="color: #7388D6;">(</span>lcpl, 1<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>dcpl = H5Pcreate<span style="color: #909183;">(</span>H5P_DATASET_CREATE<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_layout<span style="color: #7388D6;">(</span>dcpl, H5D_COMPACT<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>fapl = H5Pcreate<span style="color: #909183;">(</span>H5P_FILE_ACCESS<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_libver_bounds<span style="color: #7388D6;">(</span>fapl, H5F_LIBVER_V18, H5F_LIBVER_V110<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  <span style="color: #006699;">snprintf</span><span style="color: #707183;">(</span>h5name, PATH_MAX, <span style="color: #008000;">"%s.compactor.h5"</span>, tarname<span style="color: #707183;">)</span>;
+  printf<span style="color: #707183;">(</span><span style="color: #008000;">"|    %s\n"</span>, h5name<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>file = H5Fcreate<span style="color: #909183;">(</span>h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span>
+         &gt;= 0<span style="color: #707183;">)</span>;
+
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">fapl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+Retrieve the data as before and write them to the correspoinding HDF5
+dataset. The name of a file in the archive can be retrieved via
+<code>archive_entry_pathname</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org69471dc">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
+    assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
+
+    <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>retval &gt; 0<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+      dims = <span style="color: #909183;">(</span><span style="color: #6434A3;">hsize_t</span><span style="color: #909183;">)</span> retval;
+      assert<span style="color: #909183;">(</span><span style="color: #709870;">(</span>space = H5Screate_simple<span style="color: #907373;">(</span>1, &amp;dims, <span style="color: #D0372D;">NULL</span><span style="color: #907373;">)</span><span style="color: #709870;">)</span> &gt;= 0<span style="color: #909183;">)</span>;
+      <span style="color: #0000FF;">if</span> <span style="color: #909183;">(</span><span style="color: #709870;">(</span>dset = H5Dcreate<span style="color: #907373;">(</span>file, archive_entry_pathname<span style="color: #6276BA;">(</span>entry<span style="color: #6276BA;">)</span>,
+                            H5T_NATIVE_UINT8, space, lcpl, dcpl,
+                            H5P_DEFAULT<span style="color: #907373;">)</span><span style="color: #709870;">)</span> &gt;= 0<span style="color: #909183;">)</span> <span style="color: #909183;">{</span>
+        assert<span style="color: #709870;">(</span>H5Dwrite<span style="color: #907373;">(</span>dset, H5T_NATIVE_UINT8, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, buff<span style="color: #907373;">)</span>&gt;= 0<span style="color: #709870;">)</span>;
+        assert<span style="color: #709870;">(</span>H5Dclose<span style="color: #907373;">(</span>dset<span style="color: #907373;">)</span> &gt;= 0<span style="color: #709870;">)</span>;
+
+        ++file_count;
+      <span style="color: #909183;">}</span>
+      assert<span style="color: #909183;">(</span>H5Sclose<span style="color: #709870;">(</span>space<span style="color: #709870;">)</span> &gt;= 0<span style="color: #909183;">)</span>;
+    <span style="color: #7388D6;">}</span>
+  <span style="color: #707183;">}</span>
+
+  printf<span style="color: #707183;">(</span><span style="color: #008000;">"%d files extracted.\n"</span>, file_count<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+Do the usual housekeeping.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org6d0baf7">  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Fclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">file</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">dcpl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">lcpl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  &lt;&lt;close-archive&gt;&gt;
+</pre>
+</div>
+
+<p>
+The resulting HDF5 profile will look like this:
+</p>
+
+<pre class="example">
+HDF5 "compact.h5" {
+SUPER_BLOCK {
+   SUPERBLOCK_VERSION 2
+   FREELIST_VERSION 0
+   SYMBOLTABLE_VERSION 0
+   OBJECTHEADER_VERSION 0
+   OFFSET_SIZE 8
+   LENGTH_SIZE 8
+   BTREE_RANK 16
+   BTREE_LEAF 4
+   ISTORE_K 32
+   FILE_SPACE_STRATEGY H5F_FSPACE_STRATEGY_FSM_AGGR
+   FREE_SPACE_PERSIST FALSE
+   FREE_SPACE_SECTION_THRESHOLD 1
+   FILE_SPACE_PAGE_SIZE 4096
+   USER_BLOCK {
+      USERBLOCK_SIZE 0
+   }
+}
+GROUP "/" {
+   GROUP "train_frames_12fps_128_center_cropped" {
+      GROUP "0074cdXclLU" {
+         DATASET "000001.jpg" {
+            DATATYPE  H5T_STD_U8LE
+            DATASPACE  SIMPLE { ( 3991 ) / ( 3991 ) }
+            STORAGE_LAYOUT {
+               COMPACT
+               SIZE 3991
+            }
+            ...
+         }
+         ...
+      }
+      ...
+    }
+  }
+}
+</pre>
+</div>
+
+<div id="outline-container-org327f24e" class="outline-3">
+<h3 id="org327f24e"><span class="section-number-3">4.1</span> Using SHA-1 Hashes as Path Names</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+This is a thought experiment only. It's problematic for at least two
+reasons:
+</p>
+
+<ol class="org-ol">
+<li>The SHA-1 calculation is rather slow. It needs to be replaced with
+something like MurmurHash3 or perfect hashing.</li>
+<li>There is a good chance that there will be collisions. What is the right
+default behavior, and what kind of options would users like?</li>
+</ol>
+
+<p>
+This variation uses the SHA-1 message digest of the file data as an
+identifier. The corresponding HDF5 file will contain less metadata because
+of the flat top-level structure.
+</p>
+
+<p>
+We need two additional buffers for the SHA-1 digest and the corresponding
+path name.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orgff0c9f0">   &lt;&lt;h5compactor-definitions&gt;&gt;
+
+   <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">char</span> md<span style="color: #707183;">[</span>SHA_DIGEST_LENGTH<span style="color: #707183;">]</span>;
+   <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">hash</span><span style="color: #707183;">[</span>2*SHA_DIGEST_LENGTH<span style="color: #707183;">]</span>;
+   <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">i</span>;
+</pre>
+</div>
+
+<p>
+The main loop is exactly the same as for the regular compactor. We just need
+to calculate the SHA-1 message digest of the payload and convert it to a
+human-readable name.
+</p>
+
+<p>
+If there is a collision (same SHA-1), the HDF5 library will throw an error
+and we'll just ignore it and press on. We turn off HDF5 the error stack to
+keep the noise level down.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org11b2388">   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Eset_auto<span style="color: #7388D6;">(</span>H5E_DEFAULT, <span style="color: #D0372D;">NULL</span>, <span style="color: #D0372D;">NULL</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+   <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+     retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
+     assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
+
+     <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>retval &gt; 0<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+       SHA1<span style="color: #909183;">(</span>buff, retval, md<span style="color: #909183;">)</span>;
+
+       <span style="color: #0000FF;">for</span> <span style="color: #909183;">(</span>i=0; i &lt; SHA_DIGEST_LENGTH; ++i<span style="color: #909183;">)</span> <span style="color: #909183;">{</span>
+         sprintf<span style="color: #709870;">(</span><span style="color: #907373;">(</span><span style="color: #6434A3;">char</span>*<span style="color: #907373;">)</span>&amp;<span style="color: #907373;">(</span>hash<span style="color: #6276BA;">[</span>i*2<span style="color: #6276BA;">]</span><span style="color: #907373;">)</span>, <span style="color: #008000;">"%02x%c"</span>, md<span style="color: #907373;">[</span>i<span style="color: #907373;">]</span>,
+                 i &lt; <span style="color: #907373;">(</span>SHA_DIGEST_LENGTH-1<span style="color: #907373;">)</span> ? <span style="color: #008000;">' '</span> : <span style="color: #008000;">'\0'</span><span style="color: #709870;">)</span>;
+       <span style="color: #909183;">}</span>
+
+       dims = <span style="color: #909183;">(</span><span style="color: #6434A3;">hsize_t</span><span style="color: #909183;">)</span> retval;
+       assert<span style="color: #909183;">(</span><span style="color: #709870;">(</span>space = H5Screate_simple<span style="color: #907373;">(</span>1, &amp;dims, <span style="color: #D0372D;">NULL</span><span style="color: #907373;">)</span><span style="color: #709870;">)</span> &gt;= 0<span style="color: #909183;">)</span>;
+       <span style="color: #0000FF;">if</span> <span style="color: #909183;">(</span><span style="color: #709870;">(</span>dset = H5Dcreate<span style="color: #907373;">(</span>file, hash, H5T_NATIVE_UINT8, space,
+                             H5P_DEFAULT, dcpl, H5P_DEFAULT<span style="color: #907373;">)</span><span style="color: #709870;">)</span> &gt;= 0<span style="color: #909183;">)</span> <span style="color: #909183;">{</span>
+         assert<span style="color: #709870;">(</span>H5Dwrite<span style="color: #907373;">(</span>dset, H5T_NATIVE_UINT8, H5S_ALL, H5S_ALL,
+                         H5P_DEFAULT, buff<span style="color: #907373;">)</span>&gt;= 0<span style="color: #709870;">)</span>;
+         assert<span style="color: #709870;">(</span>H5Dclose<span style="color: #907373;">(</span>dset<span style="color: #907373;">)</span> &gt;= 0<span style="color: #709870;">)</span>;
+         ++file_count;
+       <span style="color: #909183;">}</span>
+       assert<span style="color: #909183;">(</span>H5Sclose<span style="color: #709870;">(</span>space<span style="color: #709870;">)</span> &gt;= 0<span style="color: #909183;">)</span>;
+     <span style="color: #7388D6;">}</span>
+    <span style="color: #707183;">}</span>
+
+   printf<span style="color: #707183;">(</span><span style="color: #008000;">"%d files extracted.\n"</span>, file_count<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+The resulting HDF5 profile will look like this:
+</p>
+
+<pre class="example">
+HDF5 "compact-sha1.h5" {
+SUPER_BLOCK {
+   SUPERBLOCK_VERSION 2
+   FREELIST_VERSION 0
+   SYMBOLTABLE_VERSION 0
+   OBJECTHEADER_VERSION 0
+   OFFSET_SIZE 8
+   LENGTH_SIZE 8
+   BTREE_RANK 16
+   BTREE_LEAF 4
+   ISTORE_K 32
+   FILE_SPACE_STRATEGY H5F_FSPACE_STRATEGY_FSM_AGGR
+   FREE_SPACE_PERSIST FALSE
+   FREE_SPACE_SECTION_THRESHOLD 1
+   FILE_SPACE_PAGE_SIZE 4096
+   USER_BLOCK {
+      USERBLOCK_SIZE 0
+   }
+}
+GROUP "/" {
+   DATASET "010307d26fb757f466e7acad477eb2d4d21a42b5" {
+      DATATYPE  H5T_STD_U8LE
+      DATASPACE  SIMPLE { ( 3148 ) / ( 3148 ) }
+      STORAGE_LAYOUT {
+         COMPACT
+         SIZE 3148
+      }
+      ...
+   }
+   ...
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org02529d2" class="outline-2">
+<h2 id="org02529d2"><span class="section-number-2">5</span> HDF5 Shredder</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+The compactor created separate HDF5 datasets for each file in the TAR
+archive. The shredder stores all data in a single dataset <code>image</code>. The bytes
+from each file begin (and end) at a certain position in that dataset and we
+track that information in a separate dataset <code>image_offset</code>. We do the same for
+the path names in the TAR archive in the <code>name</code> and <code>name_offset</code> datasets. The
+element type of the payload dataset will be bytes (<code>H5T_NATIVE_UINT8</code>) and the
+offsets will be stored as (potentially large) integers (<code>H5T_NATIVE_HSIZE</code>). In
+other words, the HDF5 shredder represents the file contents of the TAR
+archive in merely four HDF5 datasets. The main advantage of this
+representation is that it provides random access to the file data (and
+names).
+</p>
+
+<p>
+We have to keep track of the extents of four different datasets and need a
+few extra variables for the bookkeeping.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="orgcd586c7">  &lt;&lt;basic-definitions&gt;&gt;
+
+  <span style="color: #6434A3;">char</span> h5name<span style="color: #707183;">[</span>PATH_MAX<span style="color: #707183;">]</span>;
+  <span style="color: #6434A3;">hid_t</span> <span style="color: #BA36A5;">fapl</span>, <span style="color: #BA36A5;">file</span>, <span style="color: #BA36A5;">fspace</span>, <span style="color: #BA36A5;">mspace</span>, <span style="color: #BA36A5;">dcpl</span>;
+  <span style="color: #6434A3;">hid_t</span> <span style="color: #BA36A5;">image</span>, <span style="color: #BA36A5;">image_offset</span>, <span style="color: #BA36A5;">name</span>, <span style="color: #BA36A5;">name_offset</span>;
+  <span style="color: #6434A3;">hsize_t</span> <span style="color: #BA36A5;">dims</span>, <span style="color: #BA36A5;">maxdims</span> = H5S_UNLIMITED;
+  <span style="color: #6434A3;">hsize_t</span> <span style="color: #BA36A5;">extent</span> = 0, <span style="color: #BA36A5;">offset_extent</span> = 0, <span style="color: #BA36A5;">offset</span> = 0;
+  <span style="color: #6434A3;">hsize_t</span> <span style="color: #BA36A5;">nextent</span> = 0, <span style="color: #BA36A5;">noffset_extent</span> = 0, <span style="color: #BA36A5;">noffset</span> = 0;
+  <span style="color: #6434A3;">hsize_t</span> <span style="color: #BA36A5;">start</span>, <span style="color: #BA36A5;">one</span> = 1, <span style="color: #BA36A5;">block</span>;
+</pre>
+</div>
+
+<p>
+Since we generally don't know how many files there are in an archive, all
+datasets will be extendible. In the case of the <code>name</code> dataset, we expect a
+certain repetitiveness and it makes sense to apply (Gzip) compression.
+</p>
+
+<p>
+We use 1 million element chunks.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org6ee29ff">  &lt;&lt;open-archive&gt;&gt;
+
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>fapl = H5Pcreate<span style="color: #909183;">(</span>H5P_FILE_ACCESS<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_libver_bounds<span style="color: #7388D6;">(</span>fapl, H5F_LIBVER_V18, H5F_LIBVER_V110<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">snprintf</span><span style="color: #707183;">(</span>h5name, PATH_MAX, <span style="color: #008000;">"%s.shredder.h5"</span>, tarname<span style="color: #707183;">)</span>;
+  printf<span style="color: #707183;">(</span><span style="color: #008000;">"|    %s\n"</span>, h5name<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>file = H5Fcreate<span style="color: #909183;">(</span>h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span>
+         &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">fapl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  dims = <span style="color: #707183;">(</span><span style="color: #6434A3;">hsize_t</span><span style="color: #707183;">)</span> 0;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>fspace = H5Screate_simple<span style="color: #909183;">(</span>1, &amp;dims, &amp;maxdims<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>dcpl = H5Pcreate<span style="color: #909183;">(</span>H5P_DATASET_CREATE<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  dims = 1&lt;&lt;20;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_chunk<span style="color: #7388D6;">(</span>dcpl, 1, &amp;dims<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>image = H5Dcreate<span style="color: #909183;">(</span>file, <span style="color: #008000;">"image"</span>, H5T_NATIVE_UINT8, fspace,
+                            H5P_DEFAULT, dcpl, H5P_DEFAULT<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>image_offset = H5Dcreate<span style="color: #909183;">(</span>file, <span style="color: #008000;">"image_offset"</span>, H5T_NATIVE_HSIZE,
+                                   fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span>
+         &gt;= 0<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>name_offset = H5Dcreate<span style="color: #909183;">(</span>file, <span style="color: #008000;">"name_offset"</span>, H5T_NATIVE_HSIZE,
+                                  fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span>
+         &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_deflate<span style="color: #7388D6;">(</span>dcpl, 6<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>name = H5Dcreate<span style="color: #909183;">(</span>file, <span style="color: #008000;">"name"</span>, H5T_NATIVE_UINT8, fspace, H5P_DEFAULT,
+                           dcpl, H5P_DEFAULT<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">dcpl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">fspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+The main loop is unchanged. Fetch a new file from the archive and update the
+four datasets. The code for the <code>image</code> and <code>image_offset,</code> and the <code>name</code> and
+<code>name_offset</code> datasets is identical, and only the block
+<code>&lt;&lt;h5shredder-write-image&gt;&gt;</code> is shown below.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org9f7ce6a">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+    retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
+    assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
+
+    <span style="color: #0000FF;">if</span> <span style="color: #7388D6;">(</span>retval &gt; 0<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
+
+      &lt;&lt;h5shredder-write-image&gt;&gt;
+      &lt;&lt;h5shredder-write-name&gt;&gt;
+
+      ++file_count;
+    <span style="color: #7388D6;">}</span>
+   <span style="color: #707183;">}</span>
+
+  printf<span style="color: #707183;">(</span><span style="color: #008000;">"%d files extracted.\n"</span>, file_count<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+This is the block <code>&lt;&lt;h5shredder-write-image&gt;&gt;</code> for updating the <code>image</code> and
+<code>image_offset</code> datasets. The update/extension is done in standard HDF5 fashion:
+Construct an in-memory selection, extend the dataset, retrieve a handle of
+the in-file dataspace, (hyperslab-)select the destination in the file, and
+write.
+</p>
+
+<p>
+Remember that <code>retval</code> contains the size of the file in the archive.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C">  offset = start = extent;
+  block = <span style="color: #707183;">(</span><span style="color: #6434A3;">hsize_t</span><span style="color: #707183;">)</span> retval;
+  extent += block;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>mspace = H5Screate_simple<span style="color: #909183;">(</span>1, &amp;block, <span style="color: #D0372D;">NULL</span><span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sselect_all</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">mspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Dset_extent<span style="color: #7388D6;">(</span>image, &amp;extent<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>fspace = H5Dget_space<span style="color: #909183;">(</span>image<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Sselect_hyperslab<span style="color: #7388D6;">(</span>fspace, H5S_SELECT_SET, &amp;start, <span style="color: #D0372D;">NULL</span>, &amp;one,
+                             &amp;block<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Dwrite<span style="color: #7388D6;">(</span>image, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
+                  buff<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">fspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">mspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  start = offset_extent;
+  block = 1;
+  offset_extent += block;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>mspace = H5Screate_simple<span style="color: #909183;">(</span>1, &amp;block, <span style="color: #D0372D;">NULL</span><span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sselect_all</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">mspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Dset_extent<span style="color: #7388D6;">(</span>image_offset, &amp;offset_extent<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>fspace = H5Dget_space<span style="color: #909183;">(</span>image_offset<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Sselect_hyperslab<span style="color: #7388D6;">(</span>fspace, H5S_SELECT_SET, &amp;start, <span style="color: #D0372D;">NULL</span>, &amp;one,
+                             &amp;block<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Dwrite<span style="color: #7388D6;">(</span>image_offset, H5T_NATIVE_HSIZE, mspace, fspace,
+                  H5P_DEFAULT, &amp;offset<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">fspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Sclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">mspace</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+</pre>
+</div>
+
+<p>
+Make sure we close the datasets and the file.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-C" id="org63fcf57">  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">name_offset</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">name</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">image_offset</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">image</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Fclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">file</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+
+  &lt;&lt;close-archive&gt;&gt;
+</pre>
+</div>
+
+<p>
+The resulting HDF5 profile will look like this:
+</p>
+
+<pre class="example">
+  HDF5 "shredder.h5" {
+  SUPER_BLOCK {
+     SUPERBLOCK_VERSION 2
+     FREELIST_VERSION 0
+     SYMBOLTABLE_VERSION 0
+     OBJECTHEADER_VERSION 0
+     OFFSET_SIZE 8
+     LENGTH_SIZE 8
+     BTREE_RANK 16
+     BTREE_LEAF 4
+     ISTORE_K 32
+     FILE_SPACE_STRATEGY H5F_FSPACE_STRATEGY_FSM_AGGR
+     FREE_SPACE_PERSIST FALSE
+     FREE_SPACE_SECTION_THRESHOLD 1
+     FILE_SPACE_PAGE_SIZE 4096
+     USER_BLOCK {
+        USERBLOCK_SIZE 0
+     }
+  }
+  GROUP "/" {
+     DATASET "image" {
+        DATATYPE  H5T_STD_U8LE
+        DATASPACE  SIMPLE { ( 976083 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 1048576
+        }
+        ...
+     }
+     DATASET "image_offset" {
+        DATATYPE  H5T_STD_U64LE
+        DATASPACE  SIMPLE { ( 242 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 8388608
+        }
+        ...
+     }
+     DATASET "name" {
+        DATATYPE  H5T_STD_U8LE
+        DATASPACE  SIMPLE { ( 14762 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 1894 (7.794:1 COMPRESSION)
+        }
+        FILTERS {
+           COMPRESSION DEFLATE { LEVEL 6 }
+        }
+        ...
+     }
+     DATASET "name_offset" {
+        DATATYPE  H5T_STD_U64LE
+        DATASPACE  SIMPLE { ( 242 ) / ( H5S_UNLIMITED ) }
+        STORAGE_LAYOUT {
+           CHUNKED ( 1048576 )
+           SIZE 8388608
+        }
+        ...
+     }
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: 2020-05-10 Sun 00:00</p>
+<p class="author">Author: Gerd Heber</p>
+<p class="date">Created: 2020-05-24 Sun 12:19</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

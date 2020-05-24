@@ -6,6 +6,7 @@
 #include <hdf5.h>
 #define BUF_SIZE 65535
 #define PATH_MAX 4096
+#include <openssl/sha.h>
 
 int main(int argc, char** argv) {
   int retval;
@@ -19,6 +20,10 @@ int main(int argc, char** argv) {
   char h5name[PATH_MAX];
   hid_t fapl, file, space, dcpl, lcpl, dset;
   hsize_t dims;
+  
+  unsigned char md[SHA_DIGEST_LENGTH];
+  unsigned char hash[2*SHA_DIGEST_LENGTH];
+  int i;
   if (argc == 1) {
     printf("ERROR: No TAR file specified! Usage: cmd <TAR>\n");
     exit(1);
@@ -50,25 +55,32 @@ int main(int argc, char** argv) {
          >= 0);
   
   assert(H5Pclose(fapl) >= 0);
+  assert(H5Eset_auto(H5E_DEFAULT, NULL, NULL) >= 0);
+  
   while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
     retval = archive_read_data(a, buff, BUF_SIZE);
     assert (retval >= 0 && retval < BUF_SIZE);
   
     if (retval > 0) {
+      SHA1(buff, retval, md);
+  
+      for (i=0; i < SHA_DIGEST_LENGTH; ++i) {
+        sprintf((char*)&(hash[i*2]), "%02x%c", md[i],
+                i < (SHA_DIGEST_LENGTH-1) ? ' ' : '\0');
+      }
+  
       dims = (hsize_t) retval;
       assert((space = H5Screate_simple(1, &dims, NULL)) >= 0);
-      if ((dset = H5Dcreate(file, archive_entry_pathname(entry),
-                            H5T_NATIVE_UINT8, space, lcpl, dcpl,
-                            H5P_DEFAULT)) >= 0) {
+      if ((dset = H5Dcreate(file, hash, H5T_NATIVE_UINT8, space,
+                            H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0) {
         assert(H5Dwrite(dset, H5T_NATIVE_UINT8, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, buff)>= 0);
         assert(H5Dclose(dset) >= 0);
-  
         ++file_count;
       }
       assert(H5Sclose(space) >= 0);
     }
-  }
+   }
   
   printf("%d files extracted.\n", file_count);
   assert(H5Fclose(file) >= 0);

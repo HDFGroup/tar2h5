@@ -336,10 +336,13 @@
    human-readable name.
 
    If there is a collision (same SHA-1), the HDF5 library will throw an error
-   and we'll just ignore it and press on.
+   and we'll just ignore it and press on. We turn off HDF5 the error stack to
+   keep the noise level down.
 
    #+name: h5compactor-sha1-main-loop
    #+begin_src C
+   assert(H5Eset_auto(H5E_DEFAULT, NULL, NULL) >= 0);
+
    while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
      retval = archive_read_data(a, buff, BUF_SIZE);
      assert (retval >= 0 && retval < BUF_SIZE);

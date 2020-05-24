@@ -25,11 +25,31 @@ if (HDF5_FOUND)
     message("-- HDF5_LIBRARIES     = " ${HDF5_LIBRARIES})
 endif (HDF5_FOUND)
 
-include_directories(${MPI_INCLUDE_PATH} ${LibArchive_INCLUDE_PATH} ${HDF5_INCLUDE_DIRS})
+find_package(OpenSSL REQUIRED)
+if (OPENSSL_FOUND)
+    message("-- OPENSSL FOUND Version = " ${OPENSSL_VERSION})
+    message("-- OPENSSL_INCLUDE_DIRS  = " ${OPENSSL_INCLUDE_DIRS})
+    message("-- OPENSSL_LIBRARIES     = " ${OPENSSL_LIBRARIES})
+endif (OPENSSL_FOUND)
+
+include_directories(${MPI_INCLUDE_PATH} ${LibArchive_INCLUDE_PATH}
+  ${HDF5_INCLUDE_DIRS})
 link_directories(${MPI_LIBRARIES} ${LibArchive_LIBRARY} ${HDF5_LIBRARIES})
 
+add_executable(archive_checker archive_checker.c)
+target_link_libraries(archive_checker ${LibArchive_LIBRARIES})
+
+add_executable(archive_checker_64k archive_checker_64k.c)
+target_link_libraries(archive_checker_64k ${LibArchive_LIBRARIES})
+
 add_executable(h5compactor h5compactor.c)
-target_link_libraries(h5compactor ${MPI_LIBRARIES} ${LibArchive_LIBRARIES} ${HDF5_LIBRARIES})
+target_link_libraries(h5compactor ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
+  ${HDF5_LIBRARIES})
+
+add_executable(h5compactor-sha1 h5compactor-sha1.c)
+target_link_libraries(h5compactor-sha1 ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
+  ${HDF5_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 add_executable(h5shredder h5shredder.c)
-target_link_libraries(h5shredder ${MPI_LIBRARIES} ${LibArchive_LIBRARIES} ${HDF5_LIBRARIES})
+target_link_libraries(h5shredder ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
+  ${HDF5_LIBRARIES})
