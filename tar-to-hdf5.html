@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2020-05-24 Sun 16:24 -->
+<!-- 2020-05-24 Sun 16:39 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>From TAR to HDF5</title>
@@ -264,25 +264,25 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org0d992d1">1. Why</a></li>
-<li><a href="#org367c824">2. Housekeeping</a></li>
-<li><a href="#org6e9b363">3. A Simple Archive Checker</a>
+<li><a href="#org0f8e5fa">1. Why</a></li>
+<li><a href="#org05bcaba">2. Housekeeping</a></li>
+<li><a href="#org42a5eb5">3. A Simple Archive Checker</a>
 <ul>
-<li><a href="#org7debf5b">3.1. A simplified checker for small (&lt;64K) items</a></li>
+<li><a href="#org0c40cb0">3.1. A simplified checker for small (&lt;64K) items</a></li>
 </ul>
 </li>
-<li><a href="#orgbe318fc">4. HDF5 Compactor</a>
+<li><a href="#org8370585">4. HDF5 Compactor</a>
 <ul>
-<li><a href="#org2312b01">4.1. Using SHA-1 Hashes as Path Names</a></li>
+<li><a href="#orgcce0ae3">4.1. Using SHA-1 Hashes as Path Names</a></li>
 </ul>
 </li>
-<li><a href="#org63c1bcf">5. HDF5 Shredder</a></li>
+<li><a href="#orgbd1ce72">5. HDF5 Shredder</a></li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org0d992d1" class="outline-2">
-<h2 id="org0d992d1"><span class="section-number-2">1</span> Why</h2>
+<div id="outline-container-org0f8e5fa" class="outline-2">
+<h2 id="org0f8e5fa"><span class="section-number-2">1</span> Why</h2>
 <div class="outline-text-2" id="text-1">
 <ul class="org-ul">
 <li>Use case: ML training sets</li>
@@ -293,40 +293,40 @@ for the JavaScript code in this tag.
 </div>
 </div>
 
-<div id="outline-container-org367c824" class="outline-2">
-<h2 id="org367c824"><span class="section-number-2">2</span> Housekeeping</h2>
+<div id="outline-container-org05bcaba" class="outline-2">
+<h2 id="org05bcaba"><span class="section-number-2">2</span> Housekeeping</h2>
 <div class="outline-text-2" id="text-2">
 <div class="org-src-container">
-<pre class="src src-C" id="orgb4a9374"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">assert.h</span><span style="color: #707183;">&gt;</span>
+<pre class="src src-C" id="orgbf4a5db"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">assert.h</span><span style="color: #707183;">&gt;</span>
 <span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">stdlib.h</span><span style="color: #707183;">&gt;</span>
 <span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">string.h</span><span style="color: #707183;">&gt;</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org52ae3d3"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive.h</span><span style="color: #707183;">&gt;</span>
+<pre class="src src-C" id="orgd2f7149"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive.h</span><span style="color: #707183;">&gt;</span>
 <span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">archive_entry.h</span><span style="color: #707183;">&gt;</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orgbad1b56"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">hdf5.h</span><span style="color: #707183;">&gt;</span>
+<pre class="src src-C" id="org37e9024"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">hdf5.h</span><span style="color: #707183;">&gt;</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orgb1ad3cb"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">openssl/sha.h</span><span style="color: #707183;">&gt;</span>
+<pre class="src src-C" id="orgdaf4556"><span style="color: #808080;">  #include</span> <span style="color: #707183;">&lt;</span><span style="color: #008000;">openssl/sha.h</span><span style="color: #707183;">&gt;</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orgda4cf54"><span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">BUF_SIZE</span> 65535
+<pre class="src src-C" id="orged3a3fa"><span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">BUF_SIZE</span> 65535
 <span style="color: #808080;">  #define</span> <span style="color: #BA36A5;">PATH_MAX</span> 4096
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org72ce6a5">  <span style="color: #0000FF;">if</span> <span style="color: #707183;">(</span>argc == 1<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+<pre class="src src-C" id="org24ce9c5">  <span style="color: #0000FF;">if</span> <span style="color: #707183;">(</span>argc == 1<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
     printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"ERROR: No TAR file specified! Usage: %s &lt;TAR&gt;\n"</span>, argv<span style="color: #909183;">[</span>0<span style="color: #909183;">]</span><span style="color: #7388D6;">)</span>;
     exit<span style="color: #7388D6;">(</span>1<span style="color: #7388D6;">)</span>;
   <span style="color: #707183;">}</span>
@@ -335,8 +335,8 @@ for the JavaScript code in this tag.
 </div>
 </div>
 
-<div id="outline-container-org6e9b363" class="outline-2">
-<h2 id="org6e9b363"><span class="section-number-2">3</span> A Simple Archive Checker</h2>
+<div id="outline-container-org42a5eb5" class="outline-2">
+<h2 id="org42a5eb5"><span class="section-number-2">3</span> A Simple Archive Checker</h2>
 <div class="outline-text-2" id="text-3">
 <p>
 We use <a href="https://www.libarchive.org/">libarchive</a> for reading TAR archives and extracting TAR archive
@@ -350,7 +350,7 @@ the data doesn't fit into a single buffer.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orge3b9cd0">  <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">retval</span>;
+<pre class="src src-C" id="org88e4551">  <span style="color: #6434A3;">int</span> <span style="color: #BA36A5;">retval</span>;
   <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">tarname</span><span style="color: #707183;">[</span>PATH_MAX<span style="color: #707183;">]</span>;
   <span style="color: #0000FF;">struct</span> <span style="color: #6434A3;">archive</span> *<span style="color: #BA36A5;">a</span>;
   <span style="color: #0000FF;">struct</span> <span style="color: #6434A3;">archive_entry</span> *<span style="color: #BA36A5;">entry</span>;
@@ -365,7 +365,7 @@ Create a new archive for read and open the TAR file.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org744a6e3">  a = archive_read_new<span style="color: #707183;">()</span>;
+<pre class="src src-C" id="org838e142">  a = archive_read_new<span style="color: #707183;">()</span>;
   <span style="color: #006699;">archive_read_support_filter_all</span><span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
   <span style="color: #006699;">archive_read_support_format_all</span><span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
 
@@ -388,7 +388,7 @@ the number of (non-empty) files we've seen.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orgdc76de8">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+<pre class="src src-C" id="org6e2a005">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
     <span style="color: #0000FF;">for</span> <span style="color: #7388D6;">(</span>;;<span style="color: #7388D6;">)</span> <span style="color: #7388D6;">{</span>
       retval = archive_read_data<span style="color: #909183;">(</span>a, buff, BUF_SIZE<span style="color: #909183;">)</span>;
       assert <span style="color: #909183;">(</span>retval &gt;= 0<span style="color: #909183;">)</span>;
@@ -415,7 +415,7 @@ Close the archive.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orgd5883e2">  retval = archive_read_free<span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
+<pre class="src src-C" id="org4c669cb">  retval = archive_read_free<span style="color: #707183;">(</span>a<span style="color: #707183;">)</span>;
   <span style="color: #0000FF;">if</span> <span style="color: #707183;">(</span>retval != ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
     printf<span style="color: #7388D6;">(</span><span style="color: #008000;">"ERROR: Can't close the archive properly!\n"</span><span style="color: #7388D6;">)</span>;
     exit<span style="color: #7388D6;">(</span>1<span style="color: #7388D6;">)</span>;
@@ -485,8 +485,8 @@ Close the archive.
 </div>
 </div>
 
-<div id="outline-container-org7debf5b" class="outline-3">
-<h3 id="org7debf5b"><span class="section-number-3">3.1</span> A simplified checker for small (&lt;64K) items</h3>
+<div id="outline-container-org0c40cb0" class="outline-3">
+<h3 id="org0c40cb0"><span class="section-number-3">3.1</span> A simplified checker for small (&lt;64K) items</h3>
 <div class="outline-text-3" id="text-3-1">
 <p>
 Let's assume that all files in the archive do not exceed a certain size,
@@ -495,7 +495,7 @@ complex control structure.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orga541149">   <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+<pre class="src src-C" id="org5b15a3c">   <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
      retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
      assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
 
@@ -510,8 +510,8 @@ complex control structure.
 </div>
 </div>
 
-<div id="outline-container-orgbe318fc" class="outline-2">
-<h2 id="orgbe318fc"><span class="section-number-2">4</span> HDF5 Compactor</h2>
+<div id="outline-container-org8370585" class="outline-2">
+<h2 id="org8370585"><span class="section-number-2">4</span> HDF5 Compactor</h2>
 <div class="outline-text-2" id="text-4">
 <p>
 Presumably, all files in the archive are smaller than 64K. Let's create
@@ -524,7 +524,7 @@ We have the same set of variables as before plus a few HDF5 extras.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org1dab401">  &lt;&lt;basic-definitions&gt;&gt;
+<pre class="src src-C" id="org71ce982">  &lt;&lt;basic-definitions&gt;&gt;
 
   <span style="color: #6434A3;">char</span> h5name<span style="color: #707183;">[</span>PATH_MAX<span style="color: #707183;">]</span>;
   <span style="color: #6434A3;">hid_t</span> <span style="color: #BA36A5;">fapl</span>, <span style="color: #BA36A5;">file</span>, <span style="color: #BA36A5;">space</span>, <span style="color: #BA36A5;">dcpl</span>, <span style="color: #BA36A5;">lcpl</span>, <span style="color: #BA36A5;">dset</span>;
@@ -538,7 +538,7 @@ we'll use in the main loop.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org38762db">  &lt;&lt;open-archive&gt;&gt;
+<pre class="src src-C" id="org597a502">  &lt;&lt;open-archive&gt;&gt;
 
   assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>lcpl = H5Pcreate<span style="color: #909183;">(</span>H5P_LINK_CREATE<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_create_intermediate_group<span style="color: #7388D6;">(</span>lcpl, 1<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
@@ -565,7 +565,7 @@ dataset. The name of a file in the archive can be retrieved via
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org5db4aca">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+<pre class="src src-C" id="orgfe464ca">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
     retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
     assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
 
@@ -594,7 +594,7 @@ Do the usual housekeeping.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org962f103">  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Fclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">file</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+<pre class="src src-C" id="org1160870">  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Fclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">file</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">dcpl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Pclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">lcpl</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
 
@@ -647,8 +647,8 @@ GROUP "/" {
 </pre>
 </div>
 
-<div id="outline-container-org2312b01" class="outline-3">
-<h3 id="org2312b01"><span class="section-number-3">4.1</span> Using SHA-1 Hashes as Path Names</h3>
+<div id="outline-container-orgcce0ae3" class="outline-3">
+<h3 id="orgcce0ae3"><span class="section-number-3">4.1</span> Using SHA-1 Hashes as Path Names</h3>
 <div class="outline-text-3" id="text-4-1">
 <p>
 This is a thought experiment only. It's problematic for at least two
@@ -674,7 +674,7 @@ path name.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orge3a212b">   &lt;&lt;h5compactor-definitions&gt;&gt;
+<pre class="src src-C" id="orgbdd8cf8">   &lt;&lt;h5compactor-definitions&gt;&gt;
 
    <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">char</span> md<span style="color: #707183;">[</span>SHA_DIGEST_LENGTH<span style="color: #707183;">]</span>;
    <span style="color: #6434A3;">unsigned</span> <span style="color: #6434A3;">char</span> <span style="color: #BA36A5;">hash</span><span style="color: #707183;">[</span>2*SHA_DIGEST_LENGTH<span style="color: #707183;">]</span>;
@@ -695,7 +695,7 @@ keep the noise level down.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org6cd899b">   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Eset_auto<span style="color: #7388D6;">(</span>H5E_DEFAULT, <span style="color: #D0372D;">NULL</span>, <span style="color: #D0372D;">NULL</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+<pre class="src src-C" id="org96a6e32">   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Eset_auto<span style="color: #7388D6;">(</span>H5E_DEFAULT, <span style="color: #D0372D;">NULL</span>, <span style="color: #D0372D;">NULL</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
 
    <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
      retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
@@ -768,8 +768,8 @@ GROUP "/" {
 </div>
 </div>
 
-<div id="outline-container-org63c1bcf" class="outline-2">
-<h2 id="org63c1bcf"><span class="section-number-2">5</span> HDF5 Shredder</h2>
+<div id="outline-container-orgbd1ce72" class="outline-2">
+<h2 id="orgbd1ce72"><span class="section-number-2">5</span> HDF5 Shredder</h2>
 <div class="outline-text-2" id="text-5">
 <p>
 The compactor created separate HDF5 datasets for each file in the TAR
@@ -791,7 +791,7 @@ few extra variables for the bookkeeping.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org39a3111">  &lt;&lt;basic-definitions&gt;&gt;
+<pre class="src src-C" id="org7dc8977">  &lt;&lt;basic-definitions&gt;&gt;
 
   <span style="color: #6434A3;">char</span> h5name<span style="color: #707183;">[</span>PATH_MAX<span style="color: #707183;">]</span>;
   <span style="color: #6434A3;">hid_t</span> <span style="color: #BA36A5;">fapl</span>, <span style="color: #BA36A5;">file</span>, <span style="color: #BA36A5;">fspace</span>, <span style="color: #BA36A5;">mspace</span>, <span style="color: #BA36A5;">dcpl</span>;
@@ -814,7 +814,7 @@ We use 1 million element chunks.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org4f206a7">  &lt;&lt;open-archive&gt;&gt;
+<pre class="src src-C" id="org52cf385">  &lt;&lt;open-archive&gt;&gt;
 
   assert<span style="color: #707183;">(</span><span style="color: #7388D6;">(</span>fapl = H5Pcreate<span style="color: #909183;">(</span>H5P_FILE_ACCESS<span style="color: #909183;">)</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span>H5Pset_libver_bounds<span style="color: #7388D6;">(</span>fapl, H5F_LIBVER_V18, H5F_LIBVER_V110<span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
@@ -855,7 +855,7 @@ four datasets. The code for the <code>image</code> and <code>image_offset,</code
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="org4c0f493">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
+<pre class="src src-C" id="org91760d4">  <span style="color: #0000FF;">while</span> <span style="color: #707183;">(</span>archive_read_next_header<span style="color: #7388D6;">(</span>a, &amp;entry<span style="color: #7388D6;">)</span> == ARCHIVE_OK<span style="color: #707183;">)</span> <span style="color: #707183;">{</span>
     retval = archive_read_data<span style="color: #7388D6;">(</span>a, buff, BUF_SIZE<span style="color: #7388D6;">)</span>;
     assert <span style="color: #7388D6;">(</span>retval &gt;= 0 &amp;&amp; retval &lt; BUF_SIZE<span style="color: #7388D6;">)</span>;
 
@@ -920,7 +920,7 @@ Make sure we close the datasets and the file.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-C" id="orgf796e50">  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">name_offset</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
+<pre class="src src-C" id="orgc1467fb">  <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">name_offset</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">name</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">image_offset</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
   <span style="color: #006699;">assert</span><span style="color: #707183;">(</span><span style="color: #6434A3;">H5Dclose</span><span style="color: #7388D6;">(</span><span style="color: #BA36A5;">image</span><span style="color: #7388D6;">)</span> &gt;= 0<span style="color: #707183;">)</span>;
@@ -1003,7 +1003,7 @@ The resulting HDF5 profile will look like this:
 <div id="postamble" class="status">
 <p class="date">Date: 2020-05-10 Sun 00:00</p>
 <p class="author">Author: Gerd Heber</p>
-<p class="date">Created: 2020-05-24 Sun 16:24</p>
+<p class="date">Created: 2020-05-24 Sun 16:39</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

@@ -2,7 +2,6 @@
 #+DATE: <2020-05-10 Sun>
 #+AUTHOR: Gerd Heber
 
-
 #+SETUPFILE: https://raw.githubusercontent.com/fniessen/org-html-themes/master/setup/theme-readtheorg.setup
 
 #+PROPERTY: header-args :eval never-export
