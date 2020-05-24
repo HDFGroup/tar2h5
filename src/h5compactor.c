@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
   hid_t fapl, file, space, dcpl, lcpl, dset;
   hsize_t dims;
   if (argc == 1) {
-    printf("ERROR: No TAR file specified! Usage: cmd <TAR>\n");
+    printf("ERROR: No TAR file specified! Usage: %s <TAR>\n", argv[0]);
     exit(1);
   }
   a = archive_read_new();

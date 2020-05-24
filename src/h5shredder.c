@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
   hsize_t nextent = 0, noffset_extent = 0, noffset = 0;
   hsize_t start, one = 1, block;
   if (argc == 1) {
-    printf("ERROR: No TAR file specified! Usage: cmd <TAR>\n");
+    printf("ERROR: No TAR file specified! Usage: %s <TAR>\n", argv[0]);
     exit(1);
   }
   a = archive_read_new();

@@ -4,9 +4,9 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <hdf5.h>
+#include <openssl/sha.h>
 #define BUF_SIZE 65535
 #define PATH_MAX 4096
-#include <openssl/sha.h>
 
 int main(int argc, char** argv) {
   int retval;
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
   unsigned char hash[2*SHA_DIGEST_LENGTH];
   int i;
   if (argc == 1) {
-    printf("ERROR: No TAR file specified! Usage: cmd <TAR>\n");
+    printf("ERROR: No TAR file specified! Usage: %s <TAR>\n", argv[0]);
     exit(1);
   }
   a = archive_read_new();

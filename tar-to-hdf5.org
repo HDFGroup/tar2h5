@@ -17,14 +17,27 @@
 
 * Housekeeping
 
-  #+name: includes
+  #+name: std-includes
   #+begin_src C :noweb yes
   #include <assert.h>
   #include <stdlib.h>
   #include <string.h>
+  #+end_src
+
+  #+name: archive-includes
+  #+begin_src C :noweb yes
   #include <archive.h>
   #include <archive_entry.h>
+  #+end_src
+
+  #+name: hdf5-include
+  #+begin_src C :noweb yes
   #include <hdf5.h>
+  #+end_src
+
+  #+name: sha-include
+  #+begin_src C :noweb yes
+  #include <openssl/sha.h>
   #+end_src
 
   #+name: defines
@@ -33,16 +46,10 @@
   #define PATH_MAX 4096
   #+end_src
 
-  #+name: preproc
-  #+begin_src C :noweb yes :exports none
-  <<includes>>
-  <<defines>>
-  #+end_src
-
   #+name: arg-check
   #+begin_src C
   if (argc == 1) {
-    printf("ERROR: No TAR file specified! Usage: cmd <TAR>\n");
+    printf("ERROR: No TAR file specified! Usage: %s <TAR>\n", argv[0]);
     exit(1);
   }
   #+end_src
@@ -124,8 +131,10 @@
   }
   #+end_src
 
-  #+begin_src C :noweb yes :tangle archive_checker.c
-  <<preproc>>
+  #+begin_src C :noweb yes :tangle src/archive_checker.c
+  <<std-includes>>
+  <<archive-includes>>
+  <<defines>>
 
   int main(int argc, char** argv) {
     <<basic-definitions>>
@@ -156,8 +165,10 @@
    printf("%d files can be extracted.\n", file_count);
    #+end_src
 
-   #+begin_src C :noweb yes :tangle archive_checker_64k.c :exports none
-   <<preproc>>
+   #+begin_src C :noweb yes :tangle src/archive_checker_64k.c :exports none
+   <<std-includes>>
+   <<archive-includes>>
+   <<defines>>
 
    int main(int argc, char** argv) {
      <<basic-definitions>>
@@ -250,8 +261,11 @@
   <<close-archive>>
   #+end_src
 
-  #+begin_src C :noweb yes :tangle h5compactor.c :exports none
-  <<preproc>>
+  #+begin_src C :noweb yes :tangle src/h5compactor.c :exports none
+  <<std-includes>>
+  <<archive-includes>>
+  <<hdf5-include>>
+  <<defines>>
 
   int main(int argc, char** argv) {
     <<h5compactor-definitions>>
@@ -371,9 +385,12 @@
    printf("%d files extracted.\n", file_count);
    #+end_src
 
-   #+begin_src C :noweb yes :tangle h5compactor-sha1.c :exports none
-   <<preproc>>
-   #include <openssl/sha.h>
+   #+begin_src C :noweb yes :tangle src/h5compactor-sha1.c :exports none
+   <<std-includes>>
+   <<archive-includes>>
+   <<hdf5-include>>
+   <<sha-include>>
+   <<defines>>
 
    int main(int argc, char** argv) {
      <<h5compactor-sha1-definitions>>
@@ -598,8 +615,11 @@
   <<close-archive>>
   #+end_src
 
-  #+begin_src C :noweb no-export :tangle h5shredder.c :exports none
-  <<preproc>>
+  #+begin_src C :noweb no-export :tangle src/h5shredder.c :exports none
+  <<std-includes>>
+  <<archive-includes>>
+  <<hdf5-include>>
+  <<defines>>
 
   int main(int argc, char** argv) {
     <<h5shredder-definitions>>
