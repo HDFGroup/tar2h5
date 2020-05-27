@@ -12,7 +12,7 @@
   #+end_example
 
 * Description
-  Add the contents o =TAR NAME= to an HDF5 file.
+  Add the contents of =TAR NAME= to an HDF5 file.
 
   If =HDF5 NAME= is omitted, the name of the HDF5 file is constructed by
   appending the extension =.h5= to =TAR NAME=.
@@ -22,9 +22,10 @@
   - =-c, --compact= :: use HDF5 compact storage layout for small objects (< 64KB)
   - =--compress=LEVEL= :: use Gzip compression level =LEVEL= (0 to 9) for objects
   - =-e= :: print the HDF5 error stack
-  - =-f, --format= :: the minimum HDF5 library compatibility version
+  - =-f VERSION, --format=VERSION= :: the minimum HDF5 library compatibility
+    version =VERSION=
   - =--hash=HASH= :: store a digest according to =HASH= for each object
-  - =-r, --root= :: the path to the top-level HDF5 group
+  - =-r ROOT, --root ROOT= :: the path =ROOT= to the top-level HDF5 group
   - =-v, --version= :: output version information and exit
 
 ** Exit status:
