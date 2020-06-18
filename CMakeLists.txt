@@ -3,7 +3,6 @@ project(tar2h5)
 
 set(CMAKE_C_STANDARD 99)
 
-
 find_package(MPI REQUIRED)
 if (MPI_FOUND)
     message("-- MPI FOUND")
@@ -32,6 +31,8 @@ if (OPENSSL_FOUND)
     message("-- OPENSSL_LIBRARIES     = " ${OPENSSL_LIBRARIES})
 endif (OPENSSL_FOUND)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+
 include_directories(${MPI_INCLUDE_PATH} ${LibArchive_INCLUDE_PATH}
   ${HDF5_INCLUDE_DIRS})
 link_directories(${MPI_LIBRARIES} ${LibArchive_LIBRARY} ${HDF5_LIBRARIES})
@@ -53,3 +54,7 @@ target_link_libraries(h5compactor-sha1 ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
 add_executable(h5shredder src/h5shredder.c)
 target_link_libraries(h5shredder ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
   ${HDF5_LIBRARIES})
+
+enable_testing()
+
+add_test(run_h5compactor_demo ${PROJECT_SOURCE_DIR}/bin/h5compactor ${PROJECT_SOURCE_DIR}/demo/tar2h5-demo.tar)
