@@ -415,7 +415,7 @@
    int main(int argc, char** argv) {
      <<h5compactor-sha1-definitions>>
      <<arg-check>>
-     <<h5compactor-preamble>>
+     <<h5compactor-sha1-preamble>>
      <<h5compactor-sha1-main-loop>>
      <<h5compactor-postamble>>
      exit(0);
