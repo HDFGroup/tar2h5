@@ -19,10 +19,6 @@ sudo apt install cmake
 ```
 sudo apt install libopenmpi3 libopenmpi-dev openmpi-bin
 ```
-* cuda
-```
-sudo apt install nvidia-cuda-toolkit
-```
 * libssl
 ```
 sudo apt install libssl1.1 libssl-dev 
