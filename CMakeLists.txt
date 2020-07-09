@@ -33,8 +33,7 @@ endif (OPENSSL_FOUND)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
-include_directories(${MPI_INCLUDE_PATH} ${LibArchive_INCLUDE_PATH}
-  ${HDF5_INCLUDE_DIRS})
+include_directories(${MPI_INCLUDE_PATH} ${LibArchive_INCLUDE_PATH} ${HDF5_INCLUDE_DIRS})
 link_directories(${MPI_LIBRARIES} ${LibArchive_LIBRARY} ${HDF5_LIBRARIES})
 
 add_executable(archive_checker src/archive_checker.c)
@@ -44,17 +43,18 @@ add_executable(archive_checker_64k src/archive_checker_64k.c)
 target_link_libraries(archive_checker_64k ${LibArchive_LIBRARIES})
 
 add_executable(h5compactor src/h5compactor.c)
-target_link_libraries(h5compactor ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
-  ${HDF5_LIBRARIES})
+target_link_libraries(h5compactor ${MPI_LIBRARIES} ${LibArchive_LIBRARIES} ${HDF5_LIBRARIES})
 
 add_executable(h5compactor-sha1 src/h5compactor-sha1.c)
-target_link_libraries(h5compactor-sha1 ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
-  ${HDF5_LIBRARIES} ${OPENSSL_LIBRARIES})
+target_link_libraries(h5compactor-sha1 ${MPI_LIBRARIES} ${LibArchive_LIBRARIES} ${HDF5_LIBRARIES} ${OPENSSL_LIBRARIES})
 
 add_executable(h5shredder src/h5shredder.c)
-target_link_libraries(h5shredder ${MPI_LIBRARIES} ${LibArchive_LIBRARIES}
-  ${HDF5_LIBRARIES})
+target_link_libraries(h5shredder ${MPI_LIBRARIES} ${LibArchive_LIBRARIES} ${HDF5_LIBRARIES})
 
 enable_testing()
 
+add_test(run_archive_checker_demo ${PROJECT_SOURCE_DIR}/bin/archive_checker ${PROJECT_SOURCE_DIR}/demo/tar2h5-demo.tar)
+add_test(run_archive_checker_64k_demo ${PROJECT_SOURCE_DIR}/bin/archive_checker_64k ${PROJECT_SOURCE_DIR}/demo/tar2h5-demo.tar)
 add_test(run_h5compactor_demo ${PROJECT_SOURCE_DIR}/bin/h5compactor ${PROJECT_SOURCE_DIR}/demo/tar2h5-demo.tar)
+add_test(run_h5compactor-sha1_demo ${PROJECT_SOURCE_DIR}/bin/h5compactor-sha1 ${PROJECT_SOURCE_DIR}/demo/tar2h5-demo.tar)
+add_test(run_h5shredder_demo ${PROJECT_SOURCE_DIR}/bin/h5shredder ${PROJECT_SOURCE_DIR}/demo/tar2h5-demo.tar)
