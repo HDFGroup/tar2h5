@@ -3,7 +3,7 @@
 #include <string.h>
 #include <archive.h>
 #include <archive_entry.h>
-#define BUF_SIZE 65535
+#define BUF_SIZE 1048576
 #define PATH_MAX 4096
 
 int main(int argc, char** argv) {

@@ -41,7 +41,7 @@
 
   #+name: defines
   #+begin_src C :noweb yes
-  #define BUF_SIZE 65535
+  #define BUF_SIZE 1048576
   #define PATH_MAX 4096
   #+end_src
 
@@ -344,6 +344,27 @@
    int i;
    #+end_src
 
+   #+name: h5compactor-sha1-preamble
+   #+begin_src C :noweb no-export
+   <<open-archive>>
+
+   assert((lcpl = H5Pcreate(H5P_LINK_CREATE)) >= 0);
+   assert(H5Pset_create_intermediate_group(lcpl, 1) >= 0);
+
+   assert((dcpl = H5Pcreate(H5P_DATASET_CREATE)) >= 0);
+   assert(H5Pset_layout(dcpl, H5D_COMPACT) >= 0);
+
+   assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
+   assert(H5Pset_libver_bounds(fapl, H5F_LIBVER_V18, H5F_LIBVER_V110) >= 0);
+
+   snprintf(h5name, PATH_MAX, "%s.compactor-sha1.h5", tarname);
+   printf("|    %s\n", h5name);
+   assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl))
+          >= 0);
+
+   assert(H5Pclose(fapl) >= 0);
+   #+end_src
+
    The main loop is exactly the same as for the regular compactor. We just need
    to calculate the SHA-1 message digest of the payload and convert it to a
    human-readable name.
@@ -518,17 +539,20 @@
   #+name: h5shredder-main-loop
   #+begin_src C :noweb no-export
   while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-    retval = archive_read_data(a, buff, BUF_SIZE);
-    assert (retval >= 0 && retval < BUF_SIZE);
+    for (;;) {
+      retval = archive_read_data(a, buff, BUF_SIZE);
+      assert (retval >= 0);
+      if (retval == 0)
+        break;
 
-    if (retval > 0) {
+      if (retval > 0) {
+        <<h5shredder-write-image>>
+        <<h5shredder-write-name>>
 
-      <<h5shredder-write-image>>
-      <<h5shredder-write-name>>
-
-      ++file_count;
+        ++file_count;
+      }
     }
-   }
+  }
 
   printf("%d files extracted.\n", file_count);
   #+end_src

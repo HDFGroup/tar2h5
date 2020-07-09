@@ -5,7 +5,7 @@
 #include <archive_entry.h>
 #include <hdf5.h>
 #include <openssl/sha.h>
-#define BUF_SIZE 65535
+#define BUF_SIZE 1048576
 #define PATH_MAX 4096
 
 int main(int argc, char** argv) {
@@ -49,9 +49,10 @@ int main(int argc, char** argv) {
   assert((fapl = H5Pcreate(H5P_FILE_ACCESS)) >= 0);
   assert(H5Pset_libver_bounds(fapl, H5F_LIBVER_V18, H5F_LIBVER_V110) >= 0);
   
-  snprintf(h5name, PATH_MAX, "%s.compactor-sha1.h5", tarname);
+  snprintf(h5name, PATH_MAX, "%s.compactor.h5", tarname);
   printf("|    %s\n", h5name);
-  assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl)) >= 0);
+  assert((file = H5Fcreate(h5name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl))
+         >= 0);
   
   assert(H5Pclose(fapl) >= 0);
   assert(H5Eset_auto(H5E_DEFAULT, NULL, NULL) >= 0);
