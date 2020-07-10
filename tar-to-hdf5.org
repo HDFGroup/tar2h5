@@ -542,14 +542,14 @@
     for (;;) {
       retval = archive_read_data(a, buff, BUF_SIZE);
       assert (retval >= 0);
-      if (retval == 0)
+      if (retval == 0) {
+        <<h5shredder-write-name>>
+        ++file_count;
         break;
+      }
 
       if (retval > 0) {
         <<h5shredder-write-image>>
-        <<h5shredder-write-name>>
-
-        ++file_count;
       }
     }
   }

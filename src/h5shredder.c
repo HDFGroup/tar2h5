@@ -71,8 +71,37 @@ int main(int argc, char** argv) {
     for (;;) {
       retval = archive_read_data(a, buff, BUF_SIZE);
       assert (retval >= 0);
-      if (retval == 0)
+      if (retval == 0) {
+        noffset = start = nextent;
+        block = (hsize_t) strlen(archive_entry_pathname(entry)) + 1;
+        nextent += block;
+        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+        assert(H5Sselect_all(mspace) >= 0);
+        assert(H5Dset_extent(name, &nextent) >= 0);
+        assert((fspace = H5Dget_space(name)) >= 0);
+        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                                   &block) >= 0);
+        assert(H5Dwrite(name, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
+                        archive_entry_pathname(entry)) >= 0);
+        assert(H5Sclose(fspace) >= 0);
+        assert(H5Sclose(mspace) >= 0);
+        
+        start = noffset_extent;
+        block = 1;
+        noffset_extent += block;
+        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+        assert(H5Sselect_all(mspace) >= 0);
+        assert(H5Dset_extent(name_offset, &noffset_extent) >= 0);
+        assert((fspace = H5Dget_space(name_offset)) >= 0);
+        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                                   &block) >= 0);
+        assert(H5Dwrite(name_offset, H5T_NATIVE_HSIZE, mspace, fspace,
+                        H5P_DEFAULT, &noffset) >= 0);
+        assert(H5Sclose(fspace) >= 0);
+        assert(H5Sclose(mspace) >= 0);
+        ++file_count;
         break;
+      }
   
       if (retval > 0) {
         offset = start = extent;
@@ -102,35 +131,6 @@ int main(int argc, char** argv) {
                         H5P_DEFAULT, &offset) >= 0);
         assert(H5Sclose(fspace) >= 0);
         assert(H5Sclose(mspace) >= 0);
-        noffset = start = nextent;
-        block = (hsize_t) strlen(archive_entry_pathname(entry)) + 1;
-        nextent += block;
-        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
-        assert(H5Sselect_all(mspace) >= 0);
-        assert(H5Dset_extent(name, &nextent) >= 0);
-        assert((fspace = H5Dget_space(name)) >= 0);
-        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
-                                   &block) >= 0);
-        assert(H5Dwrite(name, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
-                        archive_entry_pathname(entry)) >= 0);
-        assert(H5Sclose(fspace) >= 0);
-        assert(H5Sclose(mspace) >= 0);
-        
-        start = noffset_extent;
-        block = 1;
-        noffset_extent += block;
-        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
-        assert(H5Sselect_all(mspace) >= 0);
-        assert(H5Dset_extent(name_offset, &noffset_extent) >= 0);
-        assert((fspace = H5Dget_space(name_offset)) >= 0);
-        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
-                                   &block) >= 0);
-        assert(H5Dwrite(name_offset, H5T_NATIVE_HSIZE, mspace, fspace,
-                        H5P_DEFAULT, &noffset) >= 0);
-        assert(H5Sclose(fspace) >= 0);
-        assert(H5Sclose(mspace) >= 0);
-  
-        ++file_count;
       }
     }
   }
