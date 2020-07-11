@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
   
   strncpy(tarname, argv[1], PATH_MAX);
   printf("|    %s\n", tarname);
-  retval = archive_read_open_filename(a, tarname, 1048576);
+  retval = archive_read_open_filename(a, tarname, BUF_SIZE);
   if (retval != ARCHIVE_OK) {
     printf("ERROR: Can't open TAR file!\n");
     exit(1);
@@ -42,8 +42,10 @@ int main(int argc, char** argv) {
       if (flg == 1)
         printf("WARNING: File > 64K found.\n");
   
+      if (flg == 0)
+        ++file_count;
+  
       flg = 1;
-      ++file_count;
     }
   }
   

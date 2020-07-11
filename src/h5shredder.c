@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
   
   strncpy(tarname, argv[1], PATH_MAX);
   printf("|    %s\n", tarname);
-  retval = archive_read_open_filename(a, tarname, 1048576);
+  retval = archive_read_open_filename(a, tarname, BUF_SIZE);
   if (retval != ARCHIVE_OK) {
     printf("ERROR: Can't open TAR file!\n");
     exit(1);
@@ -51,17 +51,18 @@ int main(int argc, char** argv) {
   assert((fspace = H5Screate_simple(1, &dims, &maxdims)) >= 0);
   
   assert((dcpl = H5Pcreate(H5P_DATASET_CREATE)) >= 0);
-  dims = 1<<20;
+  dims = 1<<17;
   assert(H5Pset_chunk(dcpl, 1, &dims) >= 0);
-  
-  assert((image = H5Dcreate(file, "image", H5T_NATIVE_UINT8, fspace,
-                            H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0);
   assert((image_offset = H5Dcreate(file, "image_offset", H5T_NATIVE_HSIZE,
                                    fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT))
          >= 0);
   assert((name_offset = H5Dcreate(file, "name_offset", H5T_NATIVE_HSIZE,
                                   fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT))
          >= 0);
+  dims = 1<<20;
+  assert(H5Pset_chunk(dcpl, 1, &dims) >= 0);
+  assert((image = H5Dcreate(file, "image", H5T_NATIVE_UINT8, fspace,
+                            H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0);
   assert(H5Pset_deflate(dcpl, 6) >= 0);
   assert((name = H5Dcreate(file, "name", H5T_NATIVE_UINT8, fspace, H5P_DEFAULT,
                            dcpl, H5P_DEFAULT)) >= 0);
@@ -72,6 +73,38 @@ int main(int argc, char** argv) {
       retval = archive_read_data(a, buff, BUF_SIZE);
       assert (retval >= 0);
       if (retval == 0) {
+        flg = 0;
+        break;
+      }
+  
+      offset = start = extent;
+      block = (hsize_t) retval;
+      extent += block;
+      assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+      assert(H5Sselect_all(mspace) >= 0);
+      assert(H5Dset_extent(image, &extent) >= 0);
+      assert((fspace = H5Dget_space(image)) >= 0);
+      assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                                 &block) >= 0);
+      assert(H5Dwrite(image, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
+                      buff) >= 0);
+      assert(H5Sclose(fspace) >= 0);
+      assert(H5Sclose(mspace) >= 0);
+  
+      if (flg == 0) {
+        start = offset_extent;
+        block = 1;
+        offset_extent += block;
+        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
+        assert(H5Sselect_all(mspace) >= 0);
+        assert(H5Dset_extent(image_offset, &offset_extent) >= 0);
+        assert((fspace = H5Dget_space(image_offset)) >= 0);
+        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
+                                   &block) >= 0);
+        assert(H5Dwrite(image_offset, H5T_NATIVE_HSIZE, mspace, fspace,
+                        H5P_DEFAULT, &offset) >= 0);
+        assert(H5Sclose(fspace) >= 0);
+        assert(H5Sclose(mspace) >= 0);
         noffset = start = nextent;
         block = (hsize_t) strlen(archive_entry_pathname(entry)) + 1;
         nextent += block;
@@ -100,38 +133,9 @@ int main(int argc, char** argv) {
         assert(H5Sclose(fspace) >= 0);
         assert(H5Sclose(mspace) >= 0);
         ++file_count;
-        break;
       }
   
-      if (retval > 0) {
-        offset = start = extent;
-        block = (hsize_t) retval;
-        extent += block;
-        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
-        assert(H5Sselect_all(mspace) >= 0);
-        assert(H5Dset_extent(image, &extent) >= 0);
-        assert((fspace = H5Dget_space(image)) >= 0);
-        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
-                                   &block) >= 0);
-        assert(H5Dwrite(image, H5T_NATIVE_UINT8, mspace, fspace, H5P_DEFAULT,
-                        buff) >= 0);
-        assert(H5Sclose(fspace) >= 0);
-        assert(H5Sclose(mspace) >= 0);
-        
-        start = offset_extent;
-        block = 1;
-        offset_extent += block;
-        assert((mspace = H5Screate_simple(1, &block, NULL)) >= 0);
-        assert(H5Sselect_all(mspace) >= 0);
-        assert(H5Dset_extent(image_offset, &offset_extent) >= 0);
-        assert((fspace = H5Dget_space(image_offset)) >= 0);
-        assert(H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &start, NULL, &one,
-                                   &block) >= 0);
-        assert(H5Dwrite(image_offset, H5T_NATIVE_HSIZE, mspace, fspace,
-                        H5P_DEFAULT, &offset) >= 0);
-        assert(H5Sclose(fspace) >= 0);
-        assert(H5Sclose(mspace) >= 0);
-      }
+      flg = 1;
     }
   }
   

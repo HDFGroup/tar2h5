@@ -83,7 +83,7 @@
 
   strncpy(tarname, argv[1], PATH_MAX);
   printf("|    %s\n", tarname);
-  retval = archive_read_open_filename(a, tarname, 1048576);
+  retval = archive_read_open_filename(a, tarname, BUF_SIZE);
   if (retval != ARCHIVE_OK) {
     printf("ERROR: Can't open TAR file!\n");
     exit(1);
@@ -93,8 +93,9 @@
   Keep reading the next header until done. For each header, read the data in up
   to 64K chunks. A return value of 0 from =archive_read_data= indicates that we
   are done with an entry. Set =flg= after the first read so that we can detect
-  data sizes exceeding 64K. If that's the case, print a warning. Finally, print
-  the number of (non-empty) files we've seen.
+  data sizes exceeding 64K. If that's the case, print a warning. To prevent
+  double counting, we increment the file count only on the first block read.
+  Finally, print the number of (non-empty) files we've seen.
 
   #+name: archive-checker-main-loop
   #+begin_src C
@@ -111,8 +112,10 @@
       if (flg == 1)
         printf("WARNING: File > 64K found.\n");
 
+      if (flg == 0)
+        ++file_count;
+
       flg = 1;
-      ++file_count;
     }
   }
 
@@ -495,7 +498,8 @@
   datasets will be extendible. In the case of the =name= dataset, we expect a
   certain repetitiveness and it makes sense to apply (Gzip) compression.
 
-  We use 1 million element chunks.
+  We use 1 million element chunks for the byte datasets and 128K element chunks
+  for the offset datasets.
 
   #+name: h5shredder-preamble
   #+begin_src C :noweb no-export
@@ -513,17 +517,18 @@
   assert((fspace = H5Screate_simple(1, &dims, &maxdims)) >= 0);
 
   assert((dcpl = H5Pcreate(H5P_DATASET_CREATE)) >= 0);
-  dims = 1<<20;
+  dims = 1<<17;
   assert(H5Pset_chunk(dcpl, 1, &dims) >= 0);
-
-  assert((image = H5Dcreate(file, "image", H5T_NATIVE_UINT8, fspace,
-                            H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0);
   assert((image_offset = H5Dcreate(file, "image_offset", H5T_NATIVE_HSIZE,
                                    fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT))
          >= 0);
   assert((name_offset = H5Dcreate(file, "name_offset", H5T_NATIVE_HSIZE,
                                   fspace, H5P_DEFAULT, dcpl, H5P_DEFAULT))
          >= 0);
+  dims = 1<<20;
+  assert(H5Pset_chunk(dcpl, 1, &dims) >= 0);
+  assert((image = H5Dcreate(file, "image", H5T_NATIVE_UINT8, fspace,
+                            H5P_DEFAULT, dcpl, H5P_DEFAULT)) >= 0);
   assert(H5Pset_deflate(dcpl, 6) >= 0);
   assert((name = H5Dcreate(file, "name", H5T_NATIVE_UINT8, fspace, H5P_DEFAULT,
                            dcpl, H5P_DEFAULT)) >= 0);
@@ -531,10 +536,12 @@
   assert(H5Sclose(fspace) >= 0);
   #+end_src
 
-  The main loop is unchanged. Fetch a new file from the archive and update the
-  four datasets. The code for the =image= and =image_offset,= and the =name= and
-  =name_offset= datasets is identical, and only the block
-  =<<h5shredder-write-image>>= is shown below.
+  The main loop is more or less unchanged. Fetch a new file from the archive
+  and update the four datasets. The code for the =image= and =image_offset,= and
+  the =name= and =name_offset= datasets is identical, and only the block
+  =<<h5shredder-write-image>>= is shown below. We have to keep in mind though
+  that a given file may require multiple block reads, but we must update
+  the name and offset arrays only once.
 
   #+name: h5shredder-main-loop
   #+begin_src C :noweb no-export
@@ -543,14 +550,19 @@
       retval = archive_read_data(a, buff, BUF_SIZE);
       assert (retval >= 0);
       if (retval == 0) {
-        <<h5shredder-write-name>>
-        ++file_count;
+        flg = 0;
         break;
       }
 
-      if (retval > 0) {
-        <<h5shredder-write-image>>
+      <<h5shredder-write-image>>
+
+      if (flg == 0) {
+        <<h5shredder-write-image-offset>>
+        <<h5shredder-write-name>>
+        ++file_count;
       }
+
+      flg = 1;
     }
   }
 
@@ -579,7 +591,9 @@
                   buff) >= 0);
   assert(H5Sclose(fspace) >= 0);
   assert(H5Sclose(mspace) >= 0);
+  #+end_src
 
+  #+begin_src C :noweb-ref h5shredder-write-image-offset
   start = offset_extent;
   block = 1;
   offset_extent += block;
