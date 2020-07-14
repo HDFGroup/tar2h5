@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
   
   while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
     retval = archive_read_data(a, buff, BUF_SIZE);
-    assert (retval >= 0 && retval < BUF_SIZE);
+    assert (retval >= 0 && retval < 65536);
   
     if (retval > 0) {
       SHA1(buff, retval, md);
