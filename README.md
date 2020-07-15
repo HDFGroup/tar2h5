@@ -1,6 +1,17 @@
 # tar2h5
 Convert Tape ARchives to HDF5 files
 
+* archive_checker
+    ```check how many files can be extracted from the input tar file.```
+* archive_checker_64k
+    ```check if any files within input tar files larger than 64 KB.```
+* h5compactor
+    ```convert input tar file into hdf5 file, all files within tar file should smaller than 64KB, using small files name as dataset names.```
+* h5compactor-sha1
+    ```convert input tar file into hdf5 file, all files within tar file should smaller than 64KB, using small files sha1 values as dataset names.```
+* h5shredder
+    ```convert input tar file into hdf5 file, no file size limitation, concatenate data and offsets into 4 seperate arrays for better randomized access.```
+
 ## Install dependent packages (on Ubuntu-20.04-LTS)
 
 * hdf5
@@ -57,4 +68,5 @@ ctest
 https://support.hdfgroup.org/projects/compass/
 ```
 
-## Output File Format 
+## Output File Format
+
