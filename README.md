@@ -38,7 +38,7 @@ sudo apt install libssl1.1 libssl-dev
 ## Install tar2h5 software
 
 ```bash
-github clone https://github.com/HDFGroup/tar2h5.git
+git clone https://github.com/HDFGroup/tar2h5.git
 cd tar2h5
 cmake .
 make
