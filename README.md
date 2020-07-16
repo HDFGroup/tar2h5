@@ -69,4 +69,9 @@ https://support.hdfgroup.org/projects/compass/
 ```
 
 ## Output File Format
-
+* `compactor` Output Sample
+![compactor](./img/01-compactor.png)
+* `compactor-sha1` Output Sample
+![compactor-sha1](./img/02-compactor-sha1.png)
+* `shredder` Output Sample
+![shredder](./img/03-shredder.png)
