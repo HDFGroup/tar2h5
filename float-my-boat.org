@@ -1,0 +1,187 @@
+#+TITLE: ML Floating-Point Formats in HDF5
+#+DATE: [2020-08-19 Wed]
+
+#+SETUPFILE: https://raw.githubusercontent.com/fniessen/org-html-themes/master/setup/theme-readtheorg.setup
+
+#+PROPERTY: header-args :eval never-export
+#+PROPERTY: header-args:C :flags -I/home/gerdheber/.local/include :libs -L/home/gerdheber/.local/lib -lhdf5)
+
+* Floating-point Flavors
+
+** Google BFloat16
+
+   #+name: bfloat16
+   #+begin_src C
+   #define BFLOAT16_BYTES  2
+   #define BFLOAT16_ORDER  H5T_ORDER_LE
+   #define BFLOAT16_PREC   16
+   #define BFLOAT16_OFFSET 0
+   #define BFLOAT16_SPOS   15
+   #define BFLOAT16_EPOS   7
+   #define BFLOAT16_ESIZE  8
+   #define BFLOAT16_EBIAS  127
+   #define BFLOAT16_MPOS   0
+   #define BFLOAT16_MSIZE  7
+   #define BFLOAT16_NORM   H5T_NORM_MSBSET
+   #define BFLOAT16_INPAD  H5T_PAD_ZERO
+   #define BFLOAT16_LSB    H5T_PAD_ZERO
+   #define BFLOAT16_MSB    H5T_PAD_ZERO
+   #+end_src
+
+** NVIDIA TensorFloat
+
+   #+name: tf32
+   #+begin_src C
+   #define TF32_BYTES  3
+   #define TF32_ORDER  H5T_ORDER_LE
+   #define TF32_PREC   19
+   #define TF32_OFFSET 0
+   #define TF32_SPOS   18
+   #define TF32_EPOS   10
+   #define TF32_ESIZE  8
+   #define TF32_EBIAS  127
+   #define TF32_MPOS   0
+   #define TF32_MSIZE  10
+   #define TF32_NORM   H5T_NORM_MSBSET
+   #define TF32_INPAD  H5T_PAD_ZERO
+   #define TF32_LSB    H5T_PAD_ZERO
+   #define TF32_MSB    H5T_PAD_ZERO
+   #+end_src
+
+*** TODO Can we pack these closer together?
+
+** AMD FP24
+
+   #+name: fp24
+   #+begin_src C
+   #define FP24_BYTES  3
+   #define FP24_ORDER  H5T_ORDER_LE
+   #define FP24_PREC   24
+   #define FP24_OFFSET 0
+   #define FP24_SPOS   23
+   #define FP24_EPOS   16
+   #define FP24_ESIZE  7
+   #define FP24_EBIAS  63
+   #define FP24_MPOS   0
+   #define FP24_MSIZE  16
+   #define FP24_NORM   H5T_NORM_MSBSET
+   #define FP24_INPAD  H5T_PAD_ZERO
+   #define FP24_LSB    H5T_PAD_ZERO
+   #define FP24_MSB    H5T_PAD_ZERO
+   #+end_src
+
+*** TODO Consider n-bit filter?
+
+* HDF5 Datatype Definition
+
+** Custom HDF5 floating-point datatype
+
+   #+name: fp-maker
+   #+begin_src C
+   hid_t make_fp_datatype
+   (
+    size_t      bytes,
+    H5T_order_t byte_order,
+    size_t      precision,
+    size_t      offset,
+    size_t      spos,
+    size_t      epos,
+    size_t      esize,
+    size_t      ebias,
+    size_t      mpos,
+    size_t      msize,
+    H5T_norm_t  norm,
+    H5T_pad_t   inpad,
+    H5T_pad_t   lsb,
+    H5T_pad_t   msb
+    )
+   {
+     hid_t result = (byte_order == H5T_ORDER_LE) ?
+       H5Tcopy(H5T_IEEE_F64LE) : H5Tcopy(H5T_IEEE_F64BE);
+     assert(result >= 0);
+     assert(H5Tset_size(result, bytes) >= 0);
+     assert(H5Tset_precision(result, precision) >= 0);
+     assert(H5Tset_offset(result, offset) >= 0);
+     assert(H5Tset_fields(result, spos, epos, esize, mpos, msize) >= 0);
+     assert(H5Tset_ebias(result, ebias) >= 0);
+     assert(H5Tset_norm(result, norm) >= 0);
+     assert(H5Tset_inpad(result, inpad) >= 0);
+     assert(H5Tset_pad(result, lsb, msb) >= 0);
+
+     return result;
+   }
+
+   hid_t make_bfloat16()
+   {
+     return make_fp_datatype(BFLOAT16_BYTES, BFLOAT16_ORDER, BFLOAT16_PREC,
+                             BFLOAT16_ORDER, BFLOAT16_SPOS, BFLOAT16_EPOS,
+                             BFLOAT16_ESIZE, BFLOAT16_EBIAS, BFLOAT16_MPOS,
+                             BFLOAT16_MSIZE, BFLOAT16_NORM, BFLOAT16_INPAD,
+                             BFLOAT16_LSB, BFLOAT16_MSB);
+   }
+
+   hid_t make_tf32()
+   {
+     return make_fp_datatype(TF32_BYTES, TF32_ORDER, TF32_PREC,
+                             TF32_ORDER, TF32_SPOS, TF32_EPOS,
+                             TF32_ESIZE, TF32_EBIAS, TF32_MPOS,
+                             TF32_MSIZE, TF32_NORM, TF32_INPAD,
+                             TF32_LSB, TF32_MSB);
+   }
+
+   hid_t make_fp24()
+   {
+     return make_fp_datatype(FP24_BYTES, FP24_ORDER, FP24_PREC,
+                             FP24_ORDER, FP24_SPOS, FP24_EPOS,
+                             FP24_ESIZE, FP24_EBIAS, FP24_MPOS,
+                             FP24_MSIZE, FP24_NORM, FP24_INPAD,
+                             FP24_LSB, FP24_MSB);
+   }
+   #+end_src
+
+*** TODO Add more sanity checks
+
+** Library
+
+   #+begin_src C :noweb yes :tangle src/fmb.h :main no
+   #include "hdf5.h"
+
+   <<bfloat16>>
+   <<tf32>>
+   <<fp24>>
+
+   extern hid_t make_fp_datatype
+   (
+    size_t      bytes,
+    H5T_order_t byte_order,
+    size_t      precision,
+    size_t      offset,
+    size_t      spos,
+    size_t      epos,
+    size_t      esize,
+    size_t      ebias,
+    size_t      mpos,
+    size_t      msize,
+    H5T_norm_t  norm,
+    H5T_pad_t   inpad,
+    H5T_pad_t   lsb,
+    H5T_pad_t   msb
+    );
+
+   extern hid_t make_bfloat16();
+   extern hid_t make_tf32();
+   extern hid_t make_fp24();
+   #+end_src
+
+   #+begin_src C :noweb yes :tangle src/fmb.c :main no
+   #include "fmb.h"
+
+   <<fp-maker>>
+   #+end_src
+
+* Conversion
+
+* References
+
+  - [[https://eigenfoo.xyz/floating-point-deep-learning/][Floating-Point Formats and Deep Learning]]
+  - [[https://en.wikipedia.org/wiki/Bfloat16_floating-point_format][bfloat16 floating-point format]]
