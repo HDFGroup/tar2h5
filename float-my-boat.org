@@ -209,7 +209,31 @@
    <<fp-maker>>
    #+end_src
 
+* Unit Testing
+
+  How we test all this?
+
+** TODO Create a sample HDF5 file with datasets for each type
+   - Create a 1024 element dataset with [FP_MIN, -511.0, ..., 0.0, ..., 510.0, FP_MAX]
+   - Create a dataset where we check the mantissa range
+   - Create a dataset where we check the exponent range
+   - Create a dataset where we check the NaN behavior
+   - Create a dataset where we check the rounding properties
+   - ...
+
+** TODO Include the corresponding MIN and MAX values
+
 * Conversion
+
+** TODO Find conversion libraries
+** TODO Check the availability of conversions on devices
+
+* Other
+
+  - NVIDIA GPU Direct storage access to PCIe attached devices
+  - How do we do that w/ HDF5?
+    - Pass the dataset/chunk addresses to the GPU
+      - Make sure that the chunks have been allocated!
 
 * References
 
