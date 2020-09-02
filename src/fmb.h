@@ -1,5 +1,19 @@
 #include "hdf5.h"
 
+#define FP16_BYTES  2
+#define FP16_ORDER  H5T_ORDER_LE
+#define FP16_PREC   16
+#define FP16_OFFSET 0
+#define FP16_SPOS   15
+#define FP16_EPOS   10
+#define FP16_ESIZE  5
+#define FP16_EBIAS  15
+#define FP16_MPOS   0
+#define FP16_MSIZE  10
+#define FP16_NORM   H5T_NORM_MSBSET
+#define FP16_INPAD  H5T_PAD_ZERO
+#define FP16_LSB    H5T_PAD_ZERO
+#define FP16_MSB    H5T_PAD_ZERO
 #define BFLOAT16_BYTES  2
 #define BFLOAT16_ORDER  H5T_ORDER_LE
 #define BFLOAT16_PREC   16
@@ -61,6 +75,7 @@ extern hid_t make_fp_datatype
  H5T_pad_t   msb
  );
 
+extern hid_t make_fp16();
 extern hid_t make_bfloat16();
 extern hid_t make_tf32();
 extern hid_t make_fp24();

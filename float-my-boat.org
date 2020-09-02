@@ -8,6 +8,25 @@
 
 * Floating-point Flavors
 
+** IEEE FP16
+   #+name: fp16
+   #+begin_src C
+   #define FP16_BYTES  2
+   #define FP16_ORDER  H5T_ORDER_LE
+   #define FP16_PREC   16
+   #define FP16_OFFSET 0
+   #define FP16_SPOS   15
+   #define FP16_EPOS   10
+   #define FP16_ESIZE  5
+   #define FP16_EBIAS  15
+   #define FP16_MPOS   0
+   #define FP16_MSIZE  10
+   #define FP16_NORM   H5T_NORM_MSBSET
+   #define FP16_INPAD  H5T_PAD_ZERO
+   #define FP16_LSB    H5T_PAD_ZERO
+   #define FP16_MSB    H5T_PAD_ZERO
+   #+end_src
+
 ** Google BFloat16
 
    #+name: bfloat16
@@ -111,6 +130,15 @@
      return result;
    }
 
+   hid_t make_fp16()
+   {
+     return make_fp_datatype(FP16_BYTES, FP16_ORDER, FP16_PREC,
+                             FP16_ORDER, FP16_SPOS, FP16_EPOS,
+                             FP16_ESIZE, FP16_EBIAS, FP16_MPOS,
+                             FP16_MSIZE, FP16_NORM, FP16_INPAD,
+                             FP16_LSB, FP16_MSB);
+   }
+
    hid_t make_bfloat16()
    {
      return make_fp_datatype(BFLOAT16_BYTES, BFLOAT16_ORDER, BFLOAT16_PREC,
@@ -146,6 +174,7 @@
    #+begin_src C :noweb yes :tangle src/fmb.h :main no
    #include "hdf5.h"
 
+   <<fp16>>
    <<bfloat16>>
    <<tf32>>
    <<fp24>>
@@ -168,6 +197,7 @@
     H5T_pad_t   msb
     );
 
+   extern hid_t make_fp16();
    extern hid_t make_bfloat16();
    extern hid_t make_tf32();
    extern hid_t make_fp24();

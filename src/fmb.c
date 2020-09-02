@@ -33,6 +33,15 @@ hid_t make_fp_datatype
   return result;
 }
 
+hid_t make_fp16()
+{
+  return make_fp_datatype(FP16_BYTES, FP16_ORDER, FP16_PREC,
+                          FP16_ORDER, FP16_SPOS, FP16_EPOS,
+                          FP16_ESIZE, FP16_EBIAS, FP16_MPOS,
+                          FP16_MSIZE, FP16_NORM, FP16_INPAD,
+                          FP16_LSB, FP16_MSB);
+}
+
 hid_t make_bfloat16()
 {
   return make_fp_datatype(BFLOAT16_BYTES, BFLOAT16_ORDER, BFLOAT16_PREC,
