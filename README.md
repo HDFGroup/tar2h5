@@ -1,5 +1,7 @@
-# tar2h5
+# Welcome to `tar2h5`
 Convert Tape ARchives to HDF5 files
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/HDFGroup/tar2h5)
 
 * `archive_checker` - check how many files can be extracted from the input tar file
 * `archive_checker_64k` - check if any files within input tar files larger than 64 KB
@@ -7,25 +9,25 @@ Convert Tape ARchives to HDF5 files
 * `h5compactor-sha1` - convert input tar file into hdf5 file, all files within tar file should smaller than 64KB, using small files sha1 values as dataset names.
 * `h5shredder` - convert input tar file into hdf5 file, no file size limitation, concatenate data and offsets into 4 seperate arrays for better randomized access
 
-## Install dependent packages (on Ubuntu-20.04-LTS)
+## Install dependent packages (on Ubuntu-22.04-LTS)
 
-* hdf5
+* __[HDF5 Library](https://github.com/HDFGroup/hdf5)__
 ``` 
-sudo apt install libhdf5-103 libhdf5-dev libhdf5-openmpi-103 libhdf5-openmpi-dev
+sudo apt install libhdf5-dev libhdf5-openmpi-dev
 ```
-* libarchive
+* __[libarchive](https://www.libarchive.org/)__
 ```
 sudo apt install libarchive13 libarchive-dev
 ```      
-* cmake
+* __[CMake](https://cmake.org/)__
 ```
 sudo apt install cmake
 ```
-* openmpi
+* __[Open MPI](https://www.open-mpi.org/)__
 ```
-sudo apt install libopenmpi3 libopenmpi-dev openmpi-bin
+sudo apt install libopenmpi-dev
 ```
-* libssl
+* __[libssl](https://www.openssl.org/)__
 ```
 sudo apt install libssl1.1 libssl-dev 
 ```
@@ -58,12 +60,17 @@ ctest
 ./bin/h5shredder ./demo/tar2h5-demo.tar
 ```
 
+## Visualization with H5Web
+```
+https://myhdf5.hdfgroup.org/
+```
+
 ## Visualization with HDFCompass
-```bash
+```
 https://support.hdfgroup.org/projects/compass/
 ```
 
-## Output File Format
+### Output File Format
 * `compactor` Output Sample
 ![compactor](./img/01-compactor.png)
 * `compactor-sha1` Output Sample
